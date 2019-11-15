@@ -71,5 +71,24 @@ def r2_total_batch_loss(
 ) -> torch.Tensor:
     return ((X - M[:, 0, :]) ** 2).mean()
 
+def r2_masked_sample_loss(
+        x: torch.Tensor,
+        j: torch.Tensor,
+        p: torch.Tensor,
+        m: torch.Tensor,
+        a: torch.Tensor,
+        d: torch.Tensor
+) -> torch.Tensor:
+    """A very unvectorized loss"""
+    mask_inds = (j == 0).nonzero().squeeze()
+    x_masked = torch.index_select(x, 0, mask_inds)
+    a_masked = torch.index_select(a, 2, mask_inds)
+    m_masked, d_masked = [
+        torch.index_select(t, 1, mask_inds)
+        for t in [m, d]
+    ]
+    return ((x_masked - m_masked[0]) ** 2).sum()
+
 
 nll_masked_batch_loss = inpainter_batch_loss_fn(nll_masked_sample_loss_v1)
+r2_masked_batch_loss = inpainter_batch_loss_fn(r2_masked_sample_loss)
