@@ -26,15 +26,20 @@ def train_val_datasets(mask_size: int, ) -> Tuple[TensorDataset, TensorDataset]:
     X = X / 16
     X.shape, J.shape, y.shape, set(y)
     X_train, X_val, J_train, J_val, y_train, y_val = train_test_split(X, J, y, test_size=0.33, random_state=42)
+
+
+    X_J_train = np.stack([X_train, J_train], axis=1)
+    X_J_val = np.stack([X_val, J_val], axis=1)
+
     ds_train = TensorDataset(
-        torch.tensor(X_train),
-        torch.tensor(J_train),
+        torch.tensor(X_J_train),
+        # torch.tensor(J_train),
         torch.tensor(y_train).long()
     )
 
     ds_val = TensorDataset(
-        torch.tensor(X_val),
-        torch.tensor(J_val),
+        torch.tensor(X_J_val),
+        # torch.tensor(J_val),
         torch.tensor(y_val).long()
     )
     return ds_train, ds_val

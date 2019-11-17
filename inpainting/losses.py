@@ -25,7 +25,7 @@ def nll_masked_sample_loss_v1(
 ) -> torch.Tensor:
     """A very unvectorized loss"""
     mask_inds = (j == 0).nonzero().squeeze()
-    x_masked = torch.index_select(x, 0, mask_inds)
+    x_masked = torch.index_select(x, 1, mask_inds)
     a_masked = torch.index_select(a, 2, mask_inds)
     m_masked, d_masked = [
         torch.index_select(t, 1, mask_inds)
@@ -37,7 +37,8 @@ def nll_masked_sample_loss_v1(
         if cov_i.shape[1] > 0:
             cov = cov_i + torch.diag(d_i ** 2)
             mvn_d = MultivariateNormal(m_i, cov)  # calculate this manually
-            losses_for_p.append(- mvn_d.log_prob(x_masked.float()))
+            loss_for_p = - mvn_d.log_prob(x_masked.float())
+            losses_for_p.append(loss_for_p)
     return torch.stack(losses_for_p).sum()
 
 
@@ -81,8 +82,7 @@ def r2_masked_sample_loss(
 ) -> torch.Tensor:
     """A very unvectorized loss"""
     mask_inds = (j == 0).nonzero().squeeze()
-    x_masked = torch.index_select(x, 0, mask_inds)
-    a_masked = torch.index_select(a, 2, mask_inds)
+    x_masked = torch.index_select(x, 1, mask_inds)
     m_masked, d_masked = [
         torch.index_select(t, 1, mask_inds)
         for t in [m, d]
