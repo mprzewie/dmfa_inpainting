@@ -38,7 +38,7 @@ def nll_masked_sample_loss_v1(
             cov = cov_i + torch.diag(d_i ** 2)
             mvn_d = MultivariateNormal(m_i, cov)  # calculate this manually
             loss_for_p = - mvn_d.log_prob(x_masked.float())
-            losses_for_p.append(loss_for_p)
+            losses_for_p.append(p_i * loss_for_p)
     return torch.stack(losses_for_p).sum()
 
 

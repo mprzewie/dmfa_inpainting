@@ -8,7 +8,7 @@ from inpainting.inpainters.inpainter import InpainterModule
 class DigitsLinearInpainter(
     InpainterModule
 ):
-    def __init__(self, n_mixes: int = 1, a_width: int=3, hidden_size: int = 128, n_hidden_layers: int = 2, bias: bool = True):
+    def __init__(self, n_mixes: int = 1, a_width: int=3, hidden_size: int = 128, n_hidden_layers: int = 2, bias: bool = True, m_sigmoid: bool = False):
         super().__init__(n_mixes=n_mixes, a_width=a_width)
         in_size = 64
 
@@ -30,12 +30,14 @@ class DigitsLinearInpainter(
             nn.Linear(hidden_size, in_size * n_mixes * a_width, bias=bias),
             Reshape((-1, n_mixes, a_width, in_size,))  # * L, we don't want 1x4 vector but L x4 matrix))
         )
-        self.m_extractor = nn.Sequential(
+        m_layers = [
             nn.Linear(hidden_size, n_mixes * in_size, bias=bias),
             Reshape((-1, n_mixes, in_size)),
-            # nn.Sigmoid()
+        ]
+        if m_sigmoid:
+            m_layers.append(nn.Sigmoid())
+        self.m_extractor = nn.Sequential(*m_layers)
 
-        )
 
         self.d_extractor = nn.Sequential(
             nn.Linear(hidden_size, n_mixes * in_size, bias=bias),

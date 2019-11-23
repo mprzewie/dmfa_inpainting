@@ -11,3 +11,6 @@ class Reshape(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x.view(*self.out_size)
+
+    def __repr__(self):
+        return f"{type(self).__name__}(out_size={self.out_size})"
