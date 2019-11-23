@@ -14,7 +14,8 @@ def digit_with_mask(
         fig, ax = plt.subplots(1, 1)
 
     x_j = x * j
-    vis = np.vstack([x_j, x_j, x_j + (j == 0)]).T.reshape(8, 8, 3)
+    vis = np.vstack([x_j, x_j, x_j + (j == 0)]).transpose((1, 2, 0))
+
 
     ax.imshow(vis)
     ax.axis("off")

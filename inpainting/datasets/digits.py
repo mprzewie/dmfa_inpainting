@@ -1,13 +1,42 @@
 from typing import Tuple
 
 import torch
+from cached_property import cached_property
 from sklearn import datasets
 import numpy as np
 from sklearn.model_selection import train_test_split
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data.dataset import Dataset
+import dataclasses as dc
 
 
-def train_val_datasets(mask_size: int, ) -> Tuple[TensorDataset, TensorDataset]:
+@dc.dataclass(frozen=True)
+class DigitsDataset(Dataset):
+    X: np.ndarray
+    J: np.ndarray
+    y: np.ndarray
+
+    def __post_init__(self):
+        assert self.X.shape[0] == self.J.shape[0] == self.y.shape[0]
+
+    @cached_property
+    def X_tensor(self) -> torch.Tensor:
+        return torch.tensor(self.X)
+
+    @cached_property
+    def J_tensor(self) -> torch.Tensor:
+        return torch.tensor(self.J)
+
+    @cached_property
+    def y_tensor(self) -> torch.Tensor:
+        return torch.tensor(self.y)
+
+    def __getitem__(self, item):
+        return (self.X_tensor[item], self.J_tensor[item]), self.y_tensor[item]
+
+    def __len__(self):
+        return self.X.shape[0]
+
+def train_val_datasets(mask_size: int, ) -> Tuple[Dataset, Dataset]:
     digits = datasets.load_digits()
     X = digits['data']
     y = digits['target']
@@ -24,22 +53,13 @@ def train_val_datasets(mask_size: int, ) -> Tuple[TensorDataset, TensorDataset]:
 
     J = np.vstack(J)
     X = X / 16
-    X.shape, J.shape, y.shape, set(y)
+
+    X = X.reshape(-1, 1, 8, 8)
+    J = J.reshape(-1, 1, 8, 8)
     X_train, X_val, J_train, J_val, y_train, y_val = train_test_split(X, J, y, test_size=0.33, random_state=42)
 
 
-    X_J_train = np.stack([X_train, J_train], axis=1)
-    X_J_val = np.stack([X_val, J_val], axis=1)
+    ds_train = DigitsDataset(X_train, J_train, y_train)
+    ds_val = DigitsDataset(X_val, J_val, y_val)
 
-    ds_train = TensorDataset(
-        torch.tensor(X_J_train),
-        # torch.tensor(J_train),
-        torch.tensor(y_train).long()
-    )
-
-    ds_val = TensorDataset(
-        torch.tensor(X_J_val),
-        # torch.tensor(J_val),
-        torch.tensor(y_val).long()
-    )
     return ds_train, ds_val

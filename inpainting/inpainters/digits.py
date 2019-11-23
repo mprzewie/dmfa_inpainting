@@ -10,7 +10,10 @@ class DigitsLinearInpainter(
 ):
     def __init__(self, n_mixes: int = 1, a_width: int=3, hidden_size: int = 128, n_hidden_layers: int = 2, bias: bool = True, m_sigmoid: bool = False):
         super().__init__(n_mixes=n_mixes, a_width=a_width)
-        in_size = 64
+        h = 8
+        w = 8
+        c = 1
+        in_size = c * h * w
 
         extractor_layers = [
             Reshape((-1, in_size * 2)),
@@ -38,7 +41,6 @@ class DigitsLinearInpainter(
             m_layers.append(nn.Sigmoid())
         self.m_extractor = nn.Sequential(*m_layers)
 
-
         self.d_extractor = nn.Sequential(
             nn.Linear(hidden_size, n_mixes * in_size, bias=bias),
             Reshape((-1, n_mixes, in_size))
@@ -50,11 +52,10 @@ class DigitsLinearInpainter(
             nn.Softmax(dim=-1)
         )
 
-    def forward(self, X: torch.Tensor, J: torch.Tensor, print_features=False):
+    def forward(self, X: torch.Tensor, J: torch.Tensor):
 
-        J_unsq = J.unsqueeze(1)
-        X_masked = X * J_unsq
-        X_J = torch.cat([X_masked, J_unsq], dim=1).float()
+        X_masked = X * J
+        X_J = torch.cat([X_masked, J], dim=1).float()
 
         features = self.extractor(X_J)
 
@@ -63,10 +64,5 @@ class DigitsLinearInpainter(
         d = self.d_extractor(features)
         a = self.a_extractor(features)
 
-        if print_features:
-            print(m)
-            m_std = m.std(dim=0)
-            print(m_std.min(), m_std.max(), m_std.mean())
-            print("----")
 
         return p, m, a, d

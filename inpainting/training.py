@@ -24,10 +24,7 @@ def train_inpainter(
     losses_to_log["objective"] = loss_fn
     history = []
     for e in tqdm(range(n_epochs)):
-
-        for i, (x_j, y) in enumerate(data_loader_train):
-            x = x_j[:, :-1]
-            j = x_j[:, -1]
+        for i, ((x,j), y) in enumerate(data_loader_train):
             inpainter.zero_grad()
             inpainter.train()
             p, m, a, d = inpainter(x, j)
@@ -43,10 +40,8 @@ def train_inpainter(
             ("val", data_loader_val)
         ]:
             losses = []
-            for i, (x_j, y) in enumerate(dl):
-                x = x_j[:, :-1]
-                j = x_j[:, -1]
-                p, m, a, d = inpainter(x, j,) # print_features= i ==0 and ((e == (n_epochs -1)) or (e % 15 ==0)))
+            for i, ((x,j), y) in enumerate(dl):
+                p, m, a, d = inpainter(x, j)
                 losses.append({
                     loss_name: l(x, j, p, m, a, d).detach().cpu().numpy()
                     for loss_name, l in losses_to_log.items()

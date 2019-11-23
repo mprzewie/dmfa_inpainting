@@ -23,9 +23,27 @@ def nll_masked_sample_loss_v1(
         a: torch.Tensor,
         d: torch.Tensor
 ) -> torch.Tensor:
-    """A very unvectorized loss"""
-    mask_inds = (j == 0).nonzero().squeeze()
-    x_masked = torch.index_select(x, 1, mask_inds)
+    """
+    c - channels
+    h - height
+    w - width
+    mx - n_mixes
+    aw - covariance matrix width
+    Args:
+        x: [c, h, w]
+        j: [h, w]
+        p: [mx]
+        m: [mx, c*h*w]
+        a: [mx, aw, c*h*w]
+        d: [mx, c*h*w]
+
+    Returns:
+
+    """
+    x_c_hw = x.reshape(x.shape[0], x.shape[1] * x.shape[2])
+    j_hw = j.reshape(-1)
+    mask_inds = (j_hw == 0).nonzero().squeeze()
+    x_masked = torch.index_select(x_c_hw, 1, mask_inds)
     a_masked = torch.index_select(a, 2, mask_inds)
     m_masked, d_masked = [
         torch.index_select(t, 1, mask_inds)
@@ -72,6 +90,7 @@ def r2_total_batch_loss(
 ) -> torch.Tensor:
     return ((X - M[:, 0, :]) ** 2).mean()
 
+
 def r2_masked_sample_loss(
         x: torch.Tensor,
         j: torch.Tensor,
@@ -81,13 +100,16 @@ def r2_masked_sample_loss(
         d: torch.Tensor
 ) -> torch.Tensor:
     """A very unvectorized loss"""
-    mask_inds = (j == 0).nonzero().squeeze()
-    x_masked = torch.index_select(x, 1, mask_inds)
+    x_c_hw = x.reshape(x.shape[0], x.shape[1] * x.shape[2])
+    j_hw = j.reshape(-1)
+    mask_inds = (j_hw == 0).nonzero().squeeze()
+    x_masked = torch.index_select(x_c_hw, 1, mask_inds)
+
     m_masked, d_masked = [
         torch.index_select(t, 1, mask_inds)
         for t in [m, d]
     ]
-    return ((x_masked - m_masked[0]) ** 2).sum()
+    return torch.stack([p_i * ((x_masked - m_i) ** 2).sum() for (p_i, m_i) in zip(p, m_masked)]).sum()
 
 
 nll_masked_batch_loss = inpainter_batch_loss_fn(nll_masked_sample_loss_v1)
