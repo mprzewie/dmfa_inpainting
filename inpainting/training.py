@@ -17,14 +17,17 @@ def train_inpainter(
     optimizer: Optimizer,
     loss_fn: InpainterLossFn,
     n_epochs: int,
-    losses_to_log: Dict[str, InpainterLossFn] = None
+    losses_to_log: Dict[str, InpainterLossFn] = None,
+    device: torch.device = torch.device("cpu")
 ) -> List:
     if losses_to_log is None:
         losses_to_log = dict()
     losses_to_log["objective"] = loss_fn
     history = []
+    inpainter = inpainter.to(device)
     for e in tqdm(range(n_epochs)):
         for i, ((x,j), y) in enumerate(data_loader_train):
+            x, j, y = [t.to(device) for t in [x,j, y]]
             inpainter.zero_grad()
             inpainter.train()
             p, m, a, d = inpainter(x, j)
@@ -41,6 +44,7 @@ def train_inpainter(
         ]:
             losses = []
             for i, ((x,j), y) in enumerate(dl):
+                x, j, y = [t.to(device) for t in [x, j, y]]
                 p, m, a, d = inpainter(x, j)
                 losses.append({
                     loss_name: l(x, j, p, m, a, d).detach().cpu().numpy()
