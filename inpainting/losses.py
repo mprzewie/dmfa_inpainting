@@ -103,8 +103,57 @@ def nll_masked_sample_loss_v2(
     x_minus_means = (x_masked - m_masked).unsqueeze(1)
     log_noms = x_minus_means.bmm(covs.inverse()).bmm(x_minus_means.transpose(1, 2))
     log_dets = covs.det().log()
-    losses = p * (1/2) * (log_noms + log_dets + log_2pi * x_masked.shape[0])
+    losses = p * (1 / 2) * (log_noms + log_dets + log_2pi * x_masked.shape[0])
     return losses.sum()
+
+
+def preprocess_sample(x: torch.Tensor,
+                      j: torch.Tensor,
+                      p: torch.Tensor,
+                      m: torch.Tensor,
+                      a: torch.Tensor,
+                      d: torch.Tensor):
+    x_c_hw = x.reshape(-1)
+    j_hw = j.reshape(-1)
+    mask_inds = (j_hw == 0).nonzero().squeeze()
+    x_masked = torch.index_select(x_c_hw, 0, mask_inds).float()
+    a_masked = torch.index_select(a, 2, mask_inds)
+    m_masked, d_masked = [
+        torch.index_select(t, 1, mask_inds)
+        for t in [m, d]
+    ]
+    return x_masked.unsqueeze(0).repeat([m_masked.shape[0], 1]), p, m_masked, a_masked, d_masked,
+
+
+def nll_masked_ubervectorized_batch_loss(
+        X: torch.Tensor,
+        J: torch.Tensor,
+        P: torch.Tensor,
+        M: torch.Tensor,
+        A: torch.Tensor,
+        D: torch.Tensor,
+):
+    """A loss which assumes that all masks are of the same size """
+    x_s = []
+    m_s = []
+    d_s = []
+    a_s = []
+    p_s = []
+    for (x, j, p, m, a, d) in zip(X, J, P, M, A, D):
+        x_p, p_p, m_p, a_p, d_p, = preprocess_sample(x, j, p, m, a, d)
+        x_s.extend(x_p)
+        m_s.extend(m_p)
+        d_s.extend(d_p)
+        a_s.extend(a_p)
+        p_s.extend(p_p)
+
+    x_s, m_s, d_s, a_s, p_s = [torch.stack(t) for t in [x_s, m_s, d_s, a_s, p_s]]
+    covs = a_s.transpose(1, 2).bmm(a_s) + torch.diag_embed(d_s ** 2)
+    x_minus_means = (x_s - m_s).unsqueeze(1)
+    log_noms = x_minus_means.bmm(covs.inverse()).bmm(x_minus_means.transpose(1, 2))
+    log_dets = covs.det().log()
+    losses = p_s * (1 / 2) * (log_noms + log_dets + log_2pi * x_s.shape[1])
+    return losses.sum() / X.shape[0]
 
 
 def inpainter_batch_loss_fn(
@@ -122,7 +171,7 @@ def inpainter_batch_loss_fn(
         return torch.stack([
             sample_loss(x, j, p, m, a, d)
             for (x, j, p, m, a, d) in zip(X, J, P, M, A, D)
-        ]).mean()
+        ]).sum()
 
     return loss
 
