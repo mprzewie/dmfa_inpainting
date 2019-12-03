@@ -148,11 +148,15 @@ def nll_masked_ubervectorized_batch_loss(
         p_s.extend(p_p)
 
     x_s, m_s, d_s, a_s, p_s = [torch.stack(t) for t in [x_s, m_s, d_s, a_s, p_s]]
-    covs = a_s.transpose(1, 2).bmm(a_s) + torch.diag_embed(d_s ** 2)
     x_minus_means = (x_s - m_s).unsqueeze(1)
-    log_noms = x_minus_means.bmm(covs.inverse()).bmm(x_minus_means.transpose(1, 2)).reshape(-1)
-    log_dets = covs.det().log()
-    losses = p_s * (1 / 2) * (log_noms + log_dets + log_2pi * x_s.shape[1])
+    d_s_inv = torch.diag_embed(d_s ** 2).inverse()
+    l_s = a_s.bmm(d_s_inv).bmm(a_s.transpose(1,2))
+    l_s = l_s + torch.diag_embed(torch.ones(l_s.shape[:2]))
+    # equations (4) and (6) from https://papers.nips.cc/paper/7826-on-gans-and-gmms.pdf
+    covs_inv_woodbury = d_s_inv - d_s_inv.bmm(a_s.transpose(1,2)).bmm(l_s.inverse()).bmm(a_s).bmm(d_s_inv)
+    log_dets_lemma = l_s.det().log() + (d_s ** 2).log().sum(dim=1)
+    log_noms = x_minus_means.bmm(covs_inv_woodbury).bmm(x_minus_means.transpose(1, 2)).reshape(-1)
+    losses = p_s * (1 / 2) * (log_noms + log_dets_lemma + log_2pi * x_s.shape[1])
     return losses.sum() / X.shape[0]
 
 
