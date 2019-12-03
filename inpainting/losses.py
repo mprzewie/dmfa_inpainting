@@ -150,10 +150,11 @@ def nll_masked_ubervectorized_batch_loss(
     x_s, m_s, d_s, a_s, p_s = [torch.stack(t) for t in [x_s, m_s, d_s, a_s, p_s]]
     covs = a_s.transpose(1, 2).bmm(a_s) + torch.diag_embed(d_s ** 2)
     x_minus_means = (x_s - m_s).unsqueeze(1)
-    log_noms = x_minus_means.bmm(covs.inverse()).bmm(x_minus_means.transpose(1, 2))
+    log_noms = x_minus_means.bmm(covs.inverse()).bmm(x_minus_means.transpose(1, 2)).reshape(-1)
     log_dets = covs.det().log()
     losses = p_s * (1 / 2) * (log_noms + log_dets + log_2pi * x_s.shape[1])
     return losses.sum() / X.shape[0]
+
 
 
 def inpainter_batch_loss_fn(
@@ -171,7 +172,7 @@ def inpainter_batch_loss_fn(
         return torch.stack([
             sample_loss(x, j, p, m, a, d)
             for (x, j, p, m, a, d) in zip(X, J, P, M, A, D)
-        ]).sum()
+        ]).mean()
 
     return loss
 
