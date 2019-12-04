@@ -5,36 +5,44 @@ from inpainting.custom_layers import Reshape
 from inpainting.inpainters.inpainter import InpainterModule
 
 
-class MNISTInpainter(
+class MNISTLinearInpainter(
     InpainterModule
 ):
-    def __init__(self, n_mixes: int = 1, in_size: int = 784, a_width: int=3, hidden_size=1024):
+    def __init__(self, n_mixes: int = 1, a_width: int=3, hidden_size=1024, n_hidden_layers: int = 3):
         super().__init__()
 
+        h = 28
+        w = 28
+        c = 1
+        in_size = c * h * w
 
-        self.extractor = nn.Sequential(
+        extractor_layers = [
             Reshape((-1, in_size * 2)),
             nn.Linear(in_size * 2, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU()
-        )
+        ]
+
+        for i in range(n_hidden_layers):
+            extractor_layers.extend([
+                nn.Linear(hidden_size, hidden_size),
+                nn.ReLU(),
+            ])
+
+        self.extractor = nn.Sequential(*extractor_layers)
 
         self.a_extractor = nn.Sequential(
             nn.Linear(hidden_size, in_size * n_mixes * a_width),
-            Reshape((-1, n_mixes, a_width, in_size,))  # * L, we don't want 1x4 vector but L x4 matrix))
+            Reshape((-1, n_mixes, a_width, in_size,))
         )
         self.m_extractor = nn.Sequential(
             nn.Linear(hidden_size, n_mixes * in_size),
             Reshape((-1, n_mixes, in_size)),
-            nn.Sigmoid()
 
         )
 
         self.d_extractor = nn.Sequential(
             nn.Linear(hidden_size, n_mixes * in_size),
+            nn.Sigmoid(),
             Reshape((-1, n_mixes, in_size))
 
         )

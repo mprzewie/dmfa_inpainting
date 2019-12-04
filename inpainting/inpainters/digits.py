@@ -43,6 +43,7 @@ class DigitsLinearInpainter(
 
         self.d_extractor = nn.Sequential(
             nn.Linear(hidden_size, n_mixes * in_size, bias=bias),
+            nn.Sigmoid(),
             Reshape((-1, n_mixes, in_size))
 
         )
