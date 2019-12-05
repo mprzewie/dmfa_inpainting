@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from inpainting.custom_layers import Reshape
+from inpainting.custom_layers import Reshape, LambdaLayer
 from inpainting.inpainters.inpainter import InpainterModule
 
 
@@ -43,8 +43,8 @@ class DigitsLinearInpainter(
 
         self.d_extractor = nn.Sequential(
             nn.Linear(hidden_size, n_mixes * in_size, bias=bias),
-            nn.Sigmoid(),
-            Reshape((-1, n_mixes, in_size))
+            Reshape((-1, n_mixes, in_size)),
+            LambdaLayer(lambda d: torch.sigmoid(d) + 1e-10),
 
         )
 

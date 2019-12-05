@@ -1,4 +1,4 @@
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Optional
 
 import numpy as np
 import torch
@@ -18,15 +18,20 @@ def train_inpainter(
     loss_fn: InpainterLossFn,
     n_epochs: int,
     losses_to_log: Dict[str, InpainterLossFn] = None,
-    device: torch.device = torch.device("cpu")
+    device: torch.device = torch.device("cpu"),
+    tqdm_loader: bool = False,
+    history_start: Optional[List] = None
 ) -> List:
     if losses_to_log is None:
         losses_to_log = dict()
     losses_to_log["objective"] = loss_fn
-    history = []
+    history = history_start if history_start is not None else []
     inpainter = inpainter.to(device)
     for e in tqdm(range(n_epochs)):
-        for i, ((x,j), y) in enumerate(data_loader_train):
+        dl_iter = enumerate(data_loader_train)
+        if tqdm_loader:
+            dl_iter = tqdm(dl_iter)
+        for i, ((x,j), y) in dl_iter:
             x, j, y = [t.to(device) for t in [x,j, y]]
             inpainter.zero_grad()
             inpainter.train()
