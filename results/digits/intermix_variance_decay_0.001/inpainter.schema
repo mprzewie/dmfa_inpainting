@@ -1,0 +1,29 @@
+DigitsLinearInpainter(
+  (extractor): Sequential(
+    (0): Reshape(out_size=(-1, 128))
+    (1): Linear(in_features=128, out_features=256, bias=True)
+    (2): ReLU()
+    (3): Linear(in_features=256, out_features=256, bias=True)
+    (4): ReLU()
+    (5): Linear(in_features=256, out_features=256, bias=True)
+    (6): ReLU()
+    (7): Linear(in_features=256, out_features=256, bias=True)
+    (8): ReLU()
+  )
+  (a_extractor): Sequential(
+    (0): Linear(in_features=256, out_features=384, bias=True)
+    (1): Reshape(out_size=(-1, 2, 3, 64))
+  )
+  (m_extractor): Sequential(
+    (0): Linear(in_features=256, out_features=128, bias=True)
+    (1): Reshape(out_size=(-1, 2, 64))
+  )
+  (d_extractor): Sequential(
+    (0): Linear(in_features=256, out_features=128, bias=True)
+    (1): Reshape(out_size=(-1, 2, 64))
+  )
+  (p_extractor): Sequential(
+    (0): Linear(in_features=256, out_features=2, bias=True)
+    (1): Softmax(dim=-1)
+  )
+)
