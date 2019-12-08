@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from inpainting.inpainters.inpainter import InpainterModule
 from inpainting.losses import InpainterLossFn
-
+from time import time
 
 def train_inpainter(
     inpainter: InpainterModule,
@@ -32,14 +32,26 @@ def train_inpainter(
         if tqdm_loader:
             dl_iter = tqdm(dl_iter)
         for i, ((x,j), y) in dl_iter:
+            break
             x, j, y = [t.to(device) for t in [x,j, y]]
             inpainter.zero_grad()
             inpainter.train()
+            t1 = time()
             p, m, a, d = inpainter(x, j)
+            t2 = time()
             loss = loss_fn(x, j, p, m, a, d)
+            t3 = time()
             loss.backward()
+            t4 = time()
             optimizer.step()
-
+            t5 = time()
+#             print("forward prop", t2 - t1)
+#             print("loss calc", t3 - t2)
+#             print("backprop", t4 - t3)
+#             print("optimizer step", t5 - t4)
+#             print("total", t5 - t1)
+#             print("----")
+            
         inpainter.eval()
         fold_losses = dict()
         sample_results = dict()
@@ -60,6 +72,8 @@ def train_inpainter(
                     sample_results[fold] = (
                         x, j, p, m, a, d, y
                     )
+                if i > 3:
+                    break
             fold_losses[fold] = losses
 
         history.append(dict(

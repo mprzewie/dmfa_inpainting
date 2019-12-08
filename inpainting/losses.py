@@ -3,7 +3,7 @@ from typing import Callable
 import numpy as np
 import torch
 from torch.distributions import MultivariateNormal
-
+from time import time
 InpainterLossFn = Callable[[
                                torch.Tensor,
                                torch.Tensor,
@@ -134,11 +134,13 @@ def nll_masked_ubervectorized_batch_loss(
         D: torch.Tensor,
 ):
     """A loss which assumes that all masks are of the same size """
+    t1 = time()
     x_s = []
     m_s = []
     d_s = []
     a_s = []
     p_s = []
+    # TODO vectorize index selection
     for (x, j, p, m, a, d) in zip(X, J, P, M, A, D):
         x_p, p_p, m_p, a_p, d_p, = preprocess_sample(x, j, p, m, a, d)
         x_s.extend(x_p)
@@ -146,20 +148,76 @@ def nll_masked_ubervectorized_batch_loss(
         d_s.extend(d_p)
         a_s.extend(a_p)
         p_s.extend(p_p)
-
+    
     x_s, m_s, d_s, a_s, p_s = [torch.stack(t) for t in [x_s, m_s, d_s, a_s, p_s]]
-    x_minus_means = (x_s - m_s).unsqueeze(1)
-    d_s_inv = torch.diag_embed(d_s).inverse()
-    l_s = a_s.bmm(d_s_inv).bmm(a_s.transpose(1,2))
+    
+    t2 = time()
+    
+    x_minus_means = (x_s - m_s).unsqueeze(1) # ?
+    d_s_inv = torch.diag_embed(d_s).inverse() # == najpierw  1 / d, a potem
+    l_s = a_s.bmm(d_s_inv).bmm(a_s.transpose(1,2)) # zamiast macierzy, a * D -1 (elemnt-wise)
     l_s = l_s + torch.diag_embed(torch.ones_like(l_s[:, :, 0]))
     # equations (4) and (6) from https://papers.nips.cc/paper/7826-on-gans-and-gmms.pdf
-    covs_inv_woodbury = d_s_inv - d_s_inv.bmm(a_s.transpose(1,2)).bmm(l_s.inverse()).bmm(a_s).bmm(d_s_inv)
-    log_dets_lemma = l_s.det().log() + (d_s).log().sum(dim=1)
+    covs_inv_woodbury = d_s_inv - d_s_inv.bmm(a_s.transpose(1,2)).bmm(l_s.inverse()).bmm(a_s).bmm(d_s_inv) # M.data(?)[:, range(100), range(100)] = d_inv (wektory, nie macierze diagonalne) - M[:, range(100), range(100)]
+    log_dets_lemma = l_s.det().log() + (d_s).log().sum(dim=1) # .log_det()
     log_noms = x_minus_means.bmm(covs_inv_woodbury).bmm(x_minus_means.transpose(1, 2)).reshape(-1)
     losses = p_s * (1 / 2) * (log_noms + log_dets_lemma + log_2pi * x_s.shape[1])
+    
+    t3 = time()
+    print("v1")
+    print("mask indices selection", t2 - t1)
+    print("actual NLL calculation", t3 - t2)
     return losses.sum() / X.shape[0]
 
-
+def nll_masked_ubervectorized_batch_loss_v2(
+        X: torch.Tensor,
+        J: torch.Tensor,
+        P: torch.Tensor,
+        M: torch.Tensor,
+        A: torch.Tensor,
+        D: torch.Tensor,
+):
+    """A loss which assumes that all masks are of the same size """
+    t1 = time()
+    x_s = []
+    m_s = []
+    d_s = []
+    a_s = []
+    p_s = []
+    # TODO vectorize index selection
+    for (x, j, p, m, a, d) in zip(X, J, P, M, A, D):
+        x_p, p_p, m_p, a_p, d_p, = preprocess_sample(x, j, p, m, a, d)
+        x_s.extend(x_p)
+        m_s.extend(m_p)
+        d_s.extend(d_p)
+        a_s.extend(a_p)
+        p_s.extend(p_p)
+    
+    x_s, m_s, d_s, a_s, p_s = [torch.stack(t) for t in [x_s, m_s, d_s, a_s, p_s]]
+    
+    t2 = time()
+    
+    x_minus_means = (x_s - m_s).unsqueeze(1) # ?
+    d_s_inv = 1 / d_s # == najpierw  1 / d, a potem
+    
+    d_s_inv_rep = d_s_inv.unsqueeze(-2).repeat_interleave(dim=-2, repeats=a_s.shape[-2])
+    d_s_rep = d_s.unsqueeze(-2).repeat_interleave(dim=-2, repeats=a_s.shape[-2])
+    a_s_t = a_s.transpose(1,2)
+    
+    a_s_d_inv = a_s * d_s_inv_rep
+    l_s = a_s_d_inv.bmm(a_s_t) # zamiast macierzy, a * D -1 (elemnt-wise)
+    l_s = l_s + torch.diag_embed(torch.ones_like(l_s[:, :, 0]))
+    # equations (4) and (6) from https://papers.nips.cc/paper/7826-on-gans-and-gmms.pdf
+    covs_inv_woodbury = torch.diag_embed(d_s_inv) - a_s_d_inv.transpose(1,2).bmm(l_s.inverse()).bmm(a_s_d_inv) # M.data(?)[:, range(100), range(100)] = d_inv (wektory, nie macierze diagonalne) - M[:, range(100), range(100)]
+    log_dets_lemma = l_s.logdet() + (d_s).log().sum(dim=1) 
+    log_noms = x_minus_means.bmm(covs_inv_woodbury).bmm(x_minus_means.transpose(1, 2)).reshape(-1)
+    losses = p_s * (1 / 2) * (log_noms + log_dets_lemma + log_2pi * x_s.shape[1])
+    
+    t3 = time()
+    print("v2")
+    print("mask indices selection", t2 - t1)
+    print("actual NLL calculation", t3 - t2)
+    return losses.sum() / X.shape[0]
 
 def inpainter_batch_loss_fn(
         sample_loss: Callable[[
