@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from inpainting.inpainters.inpainter import InpainterModule
 from inpainting.losses import InpainterLossFn
-
+from time import time
 
 def train_inpainter(
     inpainter: InpainterModule,
@@ -39,7 +39,7 @@ def train_inpainter(
             loss = loss_fn(x, j, p, m, a, d)
             loss.backward()
             optimizer.step()
-
+            
         inpainter.eval()
         fold_losses = dict()
         sample_results = dict()
