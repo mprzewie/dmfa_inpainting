@@ -59,7 +59,7 @@ class MNISTLinearInpainter(
         d = self.d_extractor(features)
         p = self.p_extractor(features)
         a = self.a_extractor(features)
-
+        
         return p, m, a, d
     
 
@@ -80,14 +80,15 @@ class MNISTConvolutionalInpainter(
         w = 28
         c = 1
         in_size = c * h * w
-        hidden_size = h * w * 128
+        last_channels = 64
+        hidden_size = h * w * last_channels
 
         self.extractor = nn.Sequential(
             nn.Conv2d(2, 16, kernel_size=5, padding=2),
             nn.ReLU(),
             nn.Conv2d(16, 32, kernel_size=5, padding=2),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=5, padding=2),
+            nn.Conv2d(32, last_channels, kernel_size=5, padding=2),
             nn.ReLU(),
             Reshape((-1, hidden_size))
         )
@@ -118,7 +119,9 @@ class MNISTConvolutionalInpainter(
     def forward(self, X, J):
         X_masked = X * J
         X_J = torch.cat([X_masked, J], dim=1)
+
         features = self.extractor(X_J)
+
         m = self.m_extractor(features)
         d = self.d_extractor(features)
         p = self.p_extractor(features)

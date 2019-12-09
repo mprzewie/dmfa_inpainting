@@ -103,19 +103,19 @@ def gather_batch_by_mask_indices(
         D: [b * mx, msk]
         msk - size of the mask
     """
-
+    
     b = X.shape[0]
     chw = torch.tensor(X.shape[1:]).prod()
     mx = M.shape[1]
     X_b_chw = X.reshape(b, chw)
     J_b_chw = J.reshape(b, chw)
     l = A.shape[2]
-
+    
     mask_inds_b, mask_inds_chw = (J_b_chw == 0).nonzero(as_tuple=True)
     msk = mask_inds_b.shape[0] // b
     X_b_msk = X_b_chw[mask_inds_b, mask_inds_chw].reshape(b, msk)
     X_bmx_msk = X_b_msk.unsqueeze(1).repeat_interleave(mx, 1).reshape(b * mx, msk)
-
+    
     A_bmx_l_msk = A.transpose(
         1, 3
     )[mask_inds_b, mask_inds_chw].reshape(
