@@ -20,11 +20,11 @@ class DigitsDataset(Dataset):
 
     @cached_property
     def X_tensor(self) -> torch.Tensor:
-        return torch.tensor(self.X)
+        return torch.tensor(self.X).float()
 
     @cached_property
     def J_tensor(self) -> torch.Tensor:
-        return torch.tensor(self.J)
+        return torch.tensor(self.J).float()
 
     @cached_property
     def y_tensor(self) -> torch.Tensor:
@@ -35,6 +35,7 @@ class DigitsDataset(Dataset):
 
     def __len__(self):
         return self.X.shape[0]
+
 
 def train_val_datasets(mask_size: int, ) -> Tuple[Dataset, Dataset]:
     digits = datasets.load_digits()
@@ -57,7 +58,6 @@ def train_val_datasets(mask_size: int, ) -> Tuple[Dataset, Dataset]:
     X = X.reshape(-1, 1, 8, 8)
     J = J.reshape(-1, 1, 8, 8)
     X_train, X_val, J_train, J_val, y_train, y_val = train_test_split(X, J, y, test_size=0.33, random_state=42)
-
 
     ds_train = DigitsDataset(X_train, J_train, y_train)
     ds_val = DigitsDataset(X_val, J_val, y_val)

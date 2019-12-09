@@ -15,8 +15,6 @@ def digit_with_mask(
 
     x_j = x * j
     vis = np.vstack([x_j, x_j, x_j + (j == 0)]).transpose((1, 2, 0))
-
-
     ax.imshow(vis)
     ax.axis("off")
     return ax
