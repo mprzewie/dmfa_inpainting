@@ -138,7 +138,7 @@ def visualize_distribution_samples(
 
     for i, (m_, a_, d_) in enumerate(zip(m, a, d)):
         sampled_fill = np.random.multivariate_normal(
-            m_, a_.T @ a_ + np.diag(d_)
+            m_, a_.T @ a_# + np.diag(d_)
         ).reshape(x.shape)
 
         x_inp = inpainted(x, j, sampled_fill)

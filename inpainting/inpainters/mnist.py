@@ -73,14 +73,14 @@ from inpainting.inpainters.inpainter import InpainterModule
 class MNISTConvolutionalInpainter(
     InpainterModule
 ):
-    def __init__(self, n_mixes: int = 1, a_width: int=3, n_hidden_layers: int = 3):
+    def __init__(self, n_mixes: int = 1, a_width: int=3):
         super().__init__()
 
         h = 28
         w = 28
         c = 1
         in_size = c * h * w
-        last_channels = 64
+        last_channels = 128
         hidden_size = h * w * last_channels
 
         self.extractor = nn.Sequential(
@@ -88,7 +88,9 @@ class MNISTConvolutionalInpainter(
             nn.ReLU(),
             nn.Conv2d(16, 32, kernel_size=5, padding=2),
             nn.ReLU(),
-            nn.Conv2d(32, last_channels, kernel_size=5, padding=2),
+            nn.Conv2d(32, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(64, last_channels, kernel_size=3, padding=1),
             nn.ReLU(),
             Reshape((-1, hidden_size))
         )
@@ -104,17 +106,23 @@ class MNISTConvolutionalInpainter(
             Reshape((-1, n_mixes, in_size)),
 
         )
+        
+        
 
         self.d_extractor = nn.Sequential(
             nn.Linear(hidden_size, n_mixes * in_size),
             Reshape((-1, n_mixes, in_size)),
-            LambdaLayer(lambda d: torch.sigmoid(d) + 1e-10),
+            LambdaLayer(self.postprocess_d),
         )
 
         self.p_extractor = nn.Sequential(
             nn.Linear(hidden_size, n_mixes),
             nn.Softmax()
         )
+        
+    @staticmethod
+    def postprocess_d(d_tensor):
+        return torch.sigmoid(d_tensor) + 1e-10
 
     def forward(self, X, J):
         X_masked = X * J
