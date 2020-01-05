@@ -161,13 +161,10 @@ def visualize_distribution_samples(
     vis_digit_mask(x, j, ax_x_masked)
 
     for i, (m_, a_, d_) in enumerate(zip(m, a, d)):
-        # sampled_fill = np.random.multivariate_normal(
-        #     m_, a_.T @ a_# + np.diag(d_)
-        # ).reshape(x.shape)
+
 
         sampled_fill = sample_fn(x, m_, a_, d_)
         x_inp = inpainted(x, j, sampled_fill)
-
         ax_m = ax_row[2 + 3 * i]
         ax_m.imshow(m_.reshape(*img_shape), cmap="gray", vmin=0, vmax=1)
         ax_m.set_title(f"m_{i}")
