@@ -323,5 +323,5 @@ def _r2_masked_sample_loss(
     return torch.stack([p_i * ((x_masked - m_i) ** 2).sum() for (p_i, m_i) in zip(p, m_masked)]).sum()
 
 
-_nll_masked_batch_loss = _batch_loss_fn(_nll_masked_sample_loss_v2)
+_nll_masked_batch_loss = _batch_loss_fn(_nll_masked_sample_loss_v1)
 _r2_masked_batch_loss = _batch_loss_fn(_r2_masked_sample_loss)

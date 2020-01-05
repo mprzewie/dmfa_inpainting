@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Callable
 
 import numpy as np
 
@@ -101,9 +101,32 @@ def visualize_sample(
         ax.axis("off")
 
 
+def cov_sample_no_d(
+        x: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray
+) -> np.ndarray:
+    return np.random.multivariate_normal(
+        m, a.T @ a
+    ).reshape(x.shape)
+
+
+def gans_gmms_sample_no_d(
+        x: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray
+) -> np.ndarray:
+    """Sampling like https://github.com/eitanrich/gans-n-gmms/blob/master/utils/mfa.py#L64"""
+    return (
+            np.random.normal(size=a.shape[0]) @ a + m
+    ).reshape(x.shape)
+
+
 def visualize_distribution_samples(
         x: np.ndarray, j: np.ndarray, p: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray, y: int,
         ax_row: Optional[np.ndarray] = None,
+        sample_fn: Callable[[
+                                np.ndarray,
+                                np.ndarray,
+                                np.ndarray,
+                                np.ndarray
+                            ], np.ndarray] = gans_gmms_sample_no_d
 ):
     """
     Args:
@@ -115,6 +138,7 @@ def visualize_distribution_samples(
         d: [mx, c*h*w]
         title_prefix:
         ax_row:
+        sample_fn:
 
     Returns:
 
@@ -137,10 +161,11 @@ def visualize_distribution_samples(
     vis_digit_mask(x, j, ax_x_masked)
 
     for i, (m_, a_, d_) in enumerate(zip(m, a, d)):
-        sampled_fill = np.random.multivariate_normal(
-            m_, a_.T @ a_# + np.diag(d_)
-        ).reshape(x.shape)
+        # sampled_fill = np.random.multivariate_normal(
+        #     m_, a_.T @ a_# + np.diag(d_)
+        # ).reshape(x.shape)
 
+        sampled_fill = sample_fn(x, m_, a_, d_)
         x_inp = inpainted(x, j, sampled_fill)
 
         ax_m = ax_row[2 + 3 * i]
