@@ -95,19 +95,18 @@ class MNISTConvolutionalInpainter(
             Reshape((-1, hidden_size))
         )
         
-
+        
 
         self.a_extractor = nn.Sequential(
             nn.Linear(hidden_size, in_size * n_mixes * a_width),
-            Reshape((-1, n_mixes, a_width, in_size,))
+            Reshape((-1, n_mixes, a_width, in_size,)),
+            LambdaLayer(self.postprocess_a)
         )
         self.m_extractor = nn.Sequential(
             nn.Linear(hidden_size, n_mixes * in_size),
             Reshape((-1, n_mixes, in_size)),
 
         )
-        
-        
 
         self.d_extractor = nn.Sequential(
             nn.Linear(hidden_size, n_mixes * in_size),
@@ -123,6 +122,11 @@ class MNISTConvolutionalInpainter(
     @staticmethod
     def postprocess_d(d_tensor):
         return torch.sigmoid(d_tensor) + 1e-10
+    
+    @staticmethod
+    def postprocess_a(a_tensor):
+        ampl = 0.5
+        return ampl * torch.sigmoid(a_tensor) - (ampl / 2)
 
     def forward(self, X, J):
         X_masked = X * J
