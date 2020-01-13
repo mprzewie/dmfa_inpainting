@@ -44,8 +44,9 @@ def train_val_datasets(mask_size: int, ) -> Tuple[Dataset, Dataset]:
     J = []
     for i in range(X.shape[0]):
         mask = np.ones((8, 8))
-        m_height = mask_size
-        m_width = mask_size
+        m_height = mask_size + np.random.randint(-2, 2)
+        m_width = mask_size + np.random.randint(-2, 2)
+        # print(m_height, m_width)
         m_x = np.random.randint(0, 8 - m_width)
         m_y = np.random.randint(0, 8 - m_height)
 
