@@ -17,6 +17,91 @@ InpainterLossFn = Callable[[
 ]
 
 
+def nll_masked_batch_loss(
+        X: torch.Tensor,
+        J: torch.Tensor,
+        P: torch.Tensor,
+        M: torch.Tensor,
+        A: torch.Tensor,
+        D: torch.Tensor,
+):
+    """A loss which allows for masks of varying size"""
+
+    x_s, p_s, m_s, a_s, d_s, d_s_inv = zero_batch_at_mask_indices(X, J, P, M, A, D)
+
+    x_minus_means = (x_s - m_s).unsqueeze(1)  # ?
+
+    d_s_inv_rep = d_s_inv.unsqueeze(-2).repeat_interleave(dim=-2, repeats=a_s.shape[-2])
+    a_s_t = a_s.transpose(1, 2)
+
+    a_s_d_inv = a_s * d_s_inv_rep
+    l_s = a_s_d_inv.bmm(a_s_t)
+    l_s = l_s + torch.diag_embed(torch.ones_like(l_s[:, :, 0]))
+    # equations (4) and (6) from https://papers.nips.cc/paper/7826-on-gans-and-gmms.pdf
+    covs_inv_woodbury = torch.diag_embed(d_s_inv) - a_s_d_inv.transpose(1, 2).bmm(l_s.inverse()).bmm(
+        a_s_d_inv)  # M.data(?)[:, range(100), range(100)] = d_inv (wektory, nie macierze diagonalne) - M[:, range(100), range(100)]
+
+    log_dets_lemma = l_s.logdet() + (d_s + (d_s == 0)).log().sum(dim=1)
+    # a hack: I add 1 where d_s == 0 so that d_s.log() is zero where d_s == 0
+    log_noms = x_minus_means.bmm(covs_inv_woodbury).bmm(x_minus_means.transpose(1, 2)).reshape(-1)
+    losses = p_s * (1 / 2) * (log_noms + log_dets_lemma + log_2pi * (d_s != 0).sum(dim=1))
+    return losses.sum() / X.shape[0]
+
+
+def zero_batch_at_mask_indices(
+        X: torch.Tensor,
+        J: torch.Tensor,
+        P: torch.Tensor,
+        M: torch.Tensor,
+        A: torch.Tensor,
+        D: torch.Tensor,
+) -> Tuple[
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor
+]:
+    """
+    Args:
+        X: [b, c, h, w]
+        J: [b, c, h, w]
+        P: [b, mx]
+        M: [b, mx, c*h*w]
+        A: [b, mx, l, c*h*w]
+        D: [b, mx, c*h*w]
+
+    Returns:
+        X: [b * mx, c*h*w]
+        P: [b * mx]
+        M: [b * mx, c*h*w]
+        A: [b * mx, l, c*h*w]
+        D: [b * mx, c*h*w]
+        D_inv: [b * mx, c*h*w]
+    """
+
+    b = X.shape[0]
+    chw = torch.tensor(X.shape[1:]).prod()
+    mx = M.shape[1]
+    X_b_chw = X.reshape(b, chw)
+    J_b_chw = J.reshape(b, chw)
+    l = A.shape[2]
+    mask_inv = (J_b_chw == 0).float()
+    X_bmx_chw = X_b_chw.unsqueeze(1).repeat_interleave(mx, 1).reshape(b * mx, chw)
+    A_zeroed = (A.transpose(0, 2) * mask_inv).transpose(0, 2)
+    M_zeroed = (M.transpose(0, 1) * mask_inv).transpose(0, 1)
+    D_trans = D.transpose(0, 1)
+    D_inv_zeroed = (1 / D_trans * mask_inv).transpose(0, 1)
+    D_zeroed = (D_trans * mask_inv).transpose(0, 1)
+    A_bmx_l_chw = A_zeroed.reshape(b * mx, l, chw)
+    M_bmx_chw = M_zeroed.reshape(b * mx, chw)
+    D_bmx_chw = D_zeroed.reshape(b * mx, chw)
+    D_inv_bmx_chw = D_inv_zeroed.reshape(b * mx, chw)
+    P_bmx = P.reshape(b * mx)
+    return X_bmx_chw, P_bmx, M_bmx_chw, A_bmx_l_chw, D_bmx_chw, D_inv_bmx_chw
+
+
 def r2_total_batch_loss(
         X: torch.Tensor,
         J: torch.Tensor,
@@ -41,8 +126,7 @@ def r2_masked_batch_loss(
     return (p_s * res).mean()
 
 
-
-def nll_masked_batch_loss(
+def nll_masked_batch_loss_same_size_masks(
         X: torch.Tensor,
         J: torch.Tensor,
         P: torch.Tensor,
@@ -51,7 +135,7 @@ def nll_masked_batch_loss(
         D: torch.Tensor,
 ):
     """A loss which assumes that all masks are of the same size """
-#     t1 = time()
+    #     t1 = time()
 
     x_s, p_s, m_s, a_s, d_s = gather_batch_by_mask_indices(X, J, P, M, A, D)
 
@@ -62,15 +146,17 @@ def nll_masked_batch_loss(
     a_s_t = a_s.transpose(1, 2)
 
     a_s_d_inv = a_s * d_s_inv_rep
-    l_s = a_s_d_inv.bmm(a_s_t)  
+    l_s = a_s_d_inv.bmm(a_s_t)
     l_s = l_s + torch.diag_embed(torch.ones_like(l_s[:, :, 0]))
     # equations (4) and (6) from https://papers.nips.cc/paper/7826-on-gans-and-gmms.pdf
-    covs_inv_woodbury = torch.diag_embed(d_s_inv) - a_s_d_inv.transpose(1, 2).bmm(l_s.inverse()).bmm(a_s_d_inv)  # M.data(?)[:, range(100), range(100)] = d_inv (wektory, nie macierze diagonalne) - M[:, range(100), range(100)]
+    covs_inv_woodbury = torch.diag_embed(d_s_inv) - a_s_d_inv.transpose(1, 2).bmm(l_s.inverse()).bmm(
+        a_s_d_inv)  # M.data(?)[:, range(100), range(100)] = d_inv (wektory, nie macierze diagonalne) - M[:, range(100), range(100)]
     log_dets_lemma = l_s.logdet() + d_s.log().sum(dim=1)
     log_noms = x_minus_means.bmm(covs_inv_woodbury).bmm(x_minus_means.transpose(1, 2)).reshape(-1)
     losses = p_s * (1 / 2) * (log_noms + log_dets_lemma + log_2pi * x_s.shape[1])
 
     return losses.sum() / X.shape[0]
+
 
 def gather_batch_by_mask_indices(
         X: torch.Tensor,
@@ -103,19 +189,19 @@ def gather_batch_by_mask_indices(
         D: [b * mx, msk]
         msk - size of the mask
     """
-    
+
     b = X.shape[0]
     chw = torch.tensor(X.shape[1:]).prod()
     mx = M.shape[1]
     X_b_chw = X.reshape(b, chw)
     J_b_chw = J.reshape(b, chw)
     l = A.shape[2]
-    
+
     mask_inds_b, mask_inds_chw = (J_b_chw == 0).nonzero(as_tuple=True)
     msk = mask_inds_b.shape[0] // b
     X_b_msk = X_b_chw[mask_inds_b, mask_inds_chw].reshape(b, msk)
     X_bmx_msk = X_b_msk.unsqueeze(1).repeat_interleave(mx, 1).reshape(b * mx, msk)
-    
+
     A_bmx_l_msk = A.transpose(
         1, 3
     )[mask_inds_b, mask_inds_chw].reshape(
@@ -262,7 +348,6 @@ def _nll_masked_ubervectorized_batch_loss_v1(
 
     x_s, m_s, d_s, a_s, p_s = [torch.stack(t) for t in [x_s, m_s, d_s, a_s, p_s]]
 
-
     x_minus_means = (x_s - m_s).unsqueeze(1)  # ?
     d_s_inv = torch.diag_embed(d_s).inverse()  # == najpierw  1 / d, a potem
     l_s = a_s.bmm(d_s_inv).bmm(a_s.transpose(1, 2))  # zamiast macierzy, a * D -1 (elemnt-wise)
@@ -275,9 +360,6 @@ def _nll_masked_ubervectorized_batch_loss_v1(
     losses = p_s * (1 / 2) * (log_noms + log_dets_lemma + log_2pi * x_s.shape[1])
 
     return losses.sum() / X.shape[0]
-
-
-
 
 
 def _batch_loss_fn(
@@ -298,8 +380,6 @@ def _batch_loss_fn(
         ]).mean()
 
     return loss
-
-
 
 
 def _r2_masked_sample_loss(
