@@ -9,14 +9,14 @@ from torchvision import transforms as tr
 def random_mask_fn(mask_shape: Tuple[int, int], mask_randomness: Tuple[int, int] = (0,0)):
     h, w = mask_shape
     hr, wr = mask_randomness
-    h += np.random.randint(-hr, hr)
-    w += np.random.randint(-wr, wr)
 
     def tensor_to_tensor_with_random_mask(image_tensor: torch.Tensor):
+        h_r = h + np.random.randint(-hr, hr)
+        w_r = w + np.random.randint(-wr, wr)
         sx, sy = image_tensor.shape[1:]
         mask = np.ones((1, sx, sy))
-        x, y = np.random.randint([0,0], [sx - h, sy - w])
-        mask[0, x:x+h, y:y+w] = 0
+        x, y = np.random.randint([0,0], [sx - h_r, sy - w_r])
+        mask[0, x:x+h_r, y:y+w_r] = 0
         return image_tensor, torch.tensor(mask).float()
     return tensor_to_tensor_with_random_mask
 
