@@ -4,6 +4,8 @@ import numpy as np
 from matplotlib.axis import Axis
 import matplotlib.pyplot as plt
 
+from inpainting.datasets.mask_coding import KNOWN, UNKNOWN_LOSS, UNKNOWN_NO_LOSS
+
 
 def digit_with_mask(
         x: np.ndarray,
@@ -12,9 +14,12 @@ def digit_with_mask(
 ):
     if ax is None:
         fig, ax = plt.subplots(1, 1)
-
-    x_j = x * j
-    vis = np.vstack([x_j, x_j, x_j + (j == 0)]).transpose((1, 2, 0))
+    x_j = x * (j == KNOWN)
+    vis = np.vstack([
+        x_j + (j == UNKNOWN_NO_LOSS),
+        x_j,
+        x_j + (j == UNKNOWN_LOSS)
+    ]).transpose((1, 2, 0))
     ax.imshow(vis)
     ax.axis("off")
     return ax

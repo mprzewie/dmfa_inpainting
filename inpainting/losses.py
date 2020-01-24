@@ -5,6 +5,8 @@ import torch
 from torch.distributions import MultivariateNormal
 from time import time
 
+from inpainting.datasets.mask_coding import UNKNOWN_LOSS
+
 InpainterLossFn = Callable[[
                                torch.Tensor,
                                torch.Tensor,
@@ -87,7 +89,7 @@ def zero_batch_at_mask_indices(
     X_b_chw = X.reshape(b, chw)
     J_b_chw = J.reshape(b, chw)
     l = A.shape[2]
-    mask_inv = (J_b_chw == 0).float()
+    mask_inv = (J_b_chw == UNKNOWN_LOSS).float()
     X_bmx_chw = X_b_chw.unsqueeze(1).repeat_interleave(mx, 1).reshape(b * mx, chw)
     A_zeroed = (A.transpose(0, 2) * mask_inv).transpose(0, 2)
     M_zeroed = (M.transpose(0, 1) * mask_inv).transpose(0, 1)
@@ -197,7 +199,7 @@ def gather_batch_by_mask_indices(
     J_b_chw = J.reshape(b, chw)
     l = A.shape[2]
 
-    mask_inds_b, mask_inds_chw = (J_b_chw == 0).nonzero(as_tuple=True)
+    mask_inds_b, mask_inds_chw = (J_b_chw == UNKNOWN_LOSS).nonzero(as_tuple=True)
     msk = mask_inds_b.shape[0] // b
     X_b_msk = X_b_chw[mask_inds_b, mask_inds_chw].reshape(b, msk)
     X_bmx_msk = X_b_msk.unsqueeze(1).repeat_interleave(mx, 1).reshape(b * mx, msk)
@@ -241,7 +243,7 @@ def _nll_masked_sample_loss_v1(
     """
     x_c_hw = x.reshape(x.shape[0], x.shape[1] * x.shape[2])
     j_hw = j.reshape(-1)
-    mask_inds = (j_hw == 0).nonzero().squeeze()
+    mask_inds = (j_hw == UNKNOWN_LOSS).nonzero().squeeze()
     x_masked = torch.index_select(x_c_hw, 1, mask_inds)
     a_masked = torch.index_select(a, 2, mask_inds)
     m_masked, d_masked = [
@@ -290,7 +292,7 @@ def _nll_masked_sample_loss_v2(
     """
     x_c_hw = x.reshape(-1)
     j_hw = j.reshape(-1)
-    mask_inds = (j_hw == 0).nonzero().squeeze()
+    mask_inds = (j_hw == UNKNOWN_LOSS).nonzero().squeeze()
     x_masked = torch.index_select(x_c_hw, 0, mask_inds).float()
     a_masked = torch.index_select(a, 2, mask_inds)
     m_masked, d_masked = [
@@ -313,7 +315,7 @@ def _unvectorized_gather_sample(x: torch.Tensor,
                                 d: torch.Tensor):
     x_c_hw = x.reshape(-1)
     j_hw = j.reshape(-1)
-    mask_inds = (j_hw == 0).nonzero().squeeze()
+    mask_inds = (j_hw == UNKNOWN_LOSS).nonzero().squeeze()
     x_masked = torch.index_select(x_c_hw, 0, mask_inds).float()
     a_masked = torch.index_select(a, 2, mask_inds)
     m_masked, d_masked = [
@@ -393,7 +395,7 @@ def _r2_masked_sample_loss(
     """A very unvectorized loss"""
     x_c_hw = x.reshape(x.shape[0], x.shape[1] * x.shape[2])
     j_hw = j.reshape(-1)
-    mask_inds = (j_hw == 0).nonzero().squeeze()
+    mask_inds = (j_hw == UNKNOWN_LOSS).nonzero().squeeze()
     x_masked = torch.index_select(x_c_hw, 1, mask_inds)
 
     m_masked, d_masked = [

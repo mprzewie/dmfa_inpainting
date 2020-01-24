@@ -1,13 +1,14 @@
 import numpy as np
 import torch
 
+from inpainting.datasets.mask_coding import UNKNOWN_LOSS
 from inpainting.inpainters.inpainter import InpainterModule
 from sklearn.neural_network import MLPClassifier
 
 
 def inpainted(x: np.ndarray, j: np.ndarray, m: np.ndarray):
     x = x.copy()
-    x[j == 0] = m[j == 0]
+    x[j == UNKNOWN_LOSS] = m[j == UNKNOWN_LOSS]
     return x
 
 

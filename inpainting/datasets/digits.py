@@ -8,6 +8,8 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data.dataset import Dataset
 import dataclasses as dc
 
+from inpainting.datasets.mask_coding import UNKNOWN_LOSS, UNKNOWN_NO_LOSS
+
 
 @dc.dataclass(frozen=True)
 class DigitsDataset(Dataset):
@@ -37,20 +39,30 @@ class DigitsDataset(Dataset):
         return self.X.shape[0]
 
 
-def train_val_datasets(mask_size: int, ) -> Tuple[Dataset, Dataset]:
+def train_val_datasets(mask_size: int = 3, mask_2_size: int = 2, mask_variance: int = 0, mask_2_variance: int = 0)  -> Tuple[Dataset, Dataset]:
     digits = datasets.load_digits()
     X = digits['data']
     y = digits['target']
     J = []
     for i in range(X.shape[0]):
+
+        # unknown data to be included in loss is marked by 0
         mask = np.ones((8, 8))
-        m_height = mask_size + np.random.randint(-2, 2)
-        m_width = mask_size + np.random.randint(-2, 2)
+        m_height = mask_size + np.random.randint(-mask_variance, mask_variance + 1)
+        m_width = mask_size + np.random.randint(-mask_variance, mask_variance + 1)
         # print(m_height, m_width)
         m_x = np.random.randint(0, 8 - m_width)
         m_y = np.random.randint(0, 8 - m_height)
 
-        mask[m_y:m_y + m_height, m_x:m_x + m_width] = 0
+        mask[m_y:m_y + m_height, m_x:m_x + m_width] = UNKNOWN_LOSS
+
+        # unknown data to not be included in loss is marked by -1
+        m_2_height = mask_2_size + np.random.randint(-mask_2_variance, mask_2_variance + 1)
+        m_2_width = mask_2_size + np.random.randint(-mask_2_variance, mask_2_variance + 1)
+        m_2_x = np.random.randint(0, 8 - m_width)
+        m_2_y = np.random.randint(0, 8 - m_height)
+        mask[m_2_y:m_2_y + m_2_height, m_2_x:m_2_x + m_2_width] = UNKNOWN_NO_LOSS
+
         J.append(mask.reshape(-1))
 
     J = np.vstack(J)
