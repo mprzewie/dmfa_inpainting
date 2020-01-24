@@ -4,12 +4,12 @@ from typing import Optional, List, Dict, Callable
 import numpy as np
 
 from inpainting.utils import inpainted
-from inpainting.visualizations.digits import digit_with_mask as vis_digit_mask
+from inpainting.visualizations.digits import digit_with_mask as vis_digit_mask, model_input as vis_model_input
 import matplotlib.pyplot as plt
 
 
 def row_length(
-        x: np.ndarray, j: np.ndarray, p: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray, y: int,
+        x: np.ndarray, j: np.ndarray, j2: np.ndarray, p: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray, y: int,
 ) -> int:
     """
     Args:
@@ -22,7 +22,7 @@ def row_length(
     """
     mx, l = a.shape[:2]
     return sum([
-        3,  # x, j, x_inp
+        4,  # x, j, x_inp
         mx,  # m
         mx * l,  # a
         mx  # d
@@ -30,7 +30,7 @@ def row_length(
 
 
 def visualize_sample(
-        x: np.ndarray, j: np.ndarray, p: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray, y: int,
+        x: np.ndarray, j: np.ndarray, j2: np.ndarray, p: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray, y: int,
         title_prefixes: Dict[int, str], ax_row: Optional[np.ndarray] = None
 ):
     """
@@ -47,7 +47,7 @@ def visualize_sample(
     Returns:
 
     """
-    row_len = row_length(x, j, p, m, a, d, y)
+    row_len = row_length(x, j, j2, p, m, a, d, y)
 
     if ax_row is None:
         fig, ax_row = plt.subplots(1, row_len)
@@ -66,18 +66,24 @@ def visualize_sample(
     ax_x_original.set_title(f"{title_prefixes[0]}y_gt = {y}")
 
     ax_x_masked = ax_row[1]
-    vis_digit_mask(x, j, ax_x_masked)
+    vis_digit_mask(x, j, j2, ax_x_masked)
     ax_x_masked.set_title(title_prefixes[1])
 
-    ax_inpainted = ax_row[2]
+    ax_x_input = ax_row[2]
+    vis_model_input(x, j, j2, ax_x_input)
+    ax_x_input.set_title("model input")
+
+
+
+    ax_inpainted = ax_row[3]
     m_ind = np.random.choice(np.arange(m.shape[0]), p=p)
     m_inp = m[m_ind].reshape(x.shape)
     x_inp = inpainted(x, j, m_inp)
     ax_inpainted.imshow(x_inp.reshape(*img_shape), cmap="gray", vmin=0, vmax=1)
-    ax_inpainted.set_title(title_prefixes[2])
+    ax_inpainted.set_title(title_prefixes[3])
 
     for i, m_ in enumerate(m):
-        ax_m = ax_row[3 + i]
+        ax_m = ax_row[4 + i]
         ax_m.imshow(m_.reshape(*img_shape), cmap="gray", vmin=0, vmax=1)
         p_form = int(p[i] * 100) / 100
         chosen = "cho " if i == m_ind else ""
@@ -85,14 +91,14 @@ def visualize_sample(
 
     for i, a_ in enumerate(a):
         for j, a_l in enumerate(a_):
-            offset = 3 + m.shape[0] + a.shape[1] * i + j
+            offset = 4 + m.shape[0] + a.shape[1] * i + j
             ax_a_l = ax_row[offset]
             ax_a_l.imshow(a_l.reshape(*img_shape), cmap="gray")
             ttl = f"a_{i}_{j} "
             ax_a_l.set_title(ttl + "m = {0:.2f}".format(np.mean(a_l)))
 
     for i, d_ in enumerate(d):
-        offset = 3 + m.shape[0] + a.shape[0] * a.shape[1] + i
+        offset = 4 + m.shape[0] + a.shape[0] * a.shape[1] + i
         ax_d = ax_row[offset]
         ax_d.imshow(d_.reshape(*img_shape), cmap="gray")
         ttl = f"d_{i} "
@@ -119,7 +125,7 @@ def gans_gmms_sample_no_d(
 
 
 def visualize_distribution_samples(
-        x: np.ndarray, j: np.ndarray, p: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray, y: int,
+        x: np.ndarray, j: np.ndarray, j2: np.ndarray, p: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray, y: int,
         ax_row: Optional[np.ndarray] = None,
         sample_fn: Callable[[
                                 np.ndarray,
@@ -132,6 +138,7 @@ def visualize_distribution_samples(
     Args:
         x: [c, h, w]
         j: [c, h, w]
+        j2: [c, h, w]
         p: [mx]
         m: [mx, c*h*w]
         a: [mx, l, c*h*w]
@@ -158,7 +165,7 @@ def visualize_distribution_samples(
         cmap="gray")
 
     ax_x_masked = ax_row[1]
-    vis_digit_mask(x, j, ax_x_masked)
+    vis_digit_mask(x, j, j2, ax_x_masked)
 
     for i, (m_, a_, d_) in enumerate(zip(m, a, d)):
 

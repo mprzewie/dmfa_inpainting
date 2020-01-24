@@ -5,7 +5,7 @@ from inpainting.inpainters.inpainter import InpainterModule
 from sklearn.neural_network import MLPClassifier
 
 
-def inpainted(x: np.ndarray, j: np.ndarray, m: np.ndarray):
+def inpainted(x: np.ndarray, j: np.ndarray, j2: np.ndarray, m: np.ndarray):
     x = x.copy()
     x[j == 0] = m[j == 0]
     return x

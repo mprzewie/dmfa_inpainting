@@ -10,17 +10,18 @@ from inpainting.inpainters.inpainter import InpainterModule
 from inpainting.losses import InpainterLossFn
 from time import time
 
+
 def train_inpainter(
-    inpainter: InpainterModule,
-    data_loader_train: DataLoader,
-    data_loader_val: DataLoader,
-    optimizer: Optimizer,
-    loss_fn: InpainterLossFn,
-    n_epochs: int,
-    losses_to_log: Dict[str, InpainterLossFn] = None,
-    device: torch.device = torch.device("cpu"),
-    tqdm_loader: bool = False,
-    history_start: Optional[List] = None
+        inpainter: InpainterModule,
+        data_loader_train: DataLoader,
+        data_loader_val: DataLoader,
+        optimizer: Optimizer,
+        loss_fn: InpainterLossFn,
+        n_epochs: int,
+        losses_to_log: Dict[str, InpainterLossFn] = None,
+        device: torch.device = torch.device("cpu"),
+        tqdm_loader: bool = False,
+        history_start: Optional[List] = None
 ) -> List:
     if losses_to_log is None:
         losses_to_log = dict()
@@ -31,15 +32,15 @@ def train_inpainter(
         dl_iter = enumerate(data_loader_train)
         if tqdm_loader:
             dl_iter = tqdm(dl_iter)
-        for i, ((x,j), y) in dl_iter:
-            x, j, y = [t.to(device) for t in [x,j, y]]
+        for i, ((x, j, j_2), y) in dl_iter:
+            x, j, j_2, y = [t.to(device) for t in [x, j, j_2, y]]
             inpainter.zero_grad()
             inpainter.train()
-            p, m, a, d = inpainter(x, j)
+            p, m, a, d = inpainter(x, j, j_2)
             loss = loss_fn(x, j, p, m, a, d)
             loss.backward()
             optimizer.step()
-            
+
         inpainter.eval()
         fold_losses = dict()
         sample_results = dict()
@@ -48,17 +49,19 @@ def train_inpainter(
             ("val", data_loader_val)
         ]:
             losses = []
-            for i, ((x,j), y) in enumerate(dl):
-                x, j, y = [t.to(device) for t in [x, j, y]]
-                p, m, a, d = inpainter(x, j)
+            for i, ((x, j, j_2), y) in enumerate(dl):
+                x, j, j_2, y = [t.to(device) for t in [x, j, j_2, y]]
+                p, m, a, d = inpainter(x, j, j_2)
+
+                # loss is calculated only from j, i.e. the mask under which we know what is behind
                 losses.append({
                     loss_name: l(x, j, p, m, a, d).detach().cpu().numpy()
                     for loss_name, l in losses_to_log.items()
                 })
                 if i == 0:
-                    x, j, p, m, a, d = [t.detach().cpu().numpy() for t in [x, j, p, m, a, d]]
+                    x, j, j_2, p, m, a, d = [t.detach().cpu().numpy() for t in [x, j, j_2, p, m, a, d]]
                     sample_results[fold] = (
-                        x, j, p, m, a, d, y
+                        x, j, j_2, p, m, a, d, y
                     )
             fold_losses[fold] = losses
 

@@ -8,7 +8,8 @@ from inpainting.inpainters.inpainter import InpainterModule
 class DigitsLinearInpainter(
     InpainterModule
 ):
-    def __init__(self, n_mixes: int = 1, a_width: int=3, hidden_size: int = 128, n_hidden_layers: int = 2, bias: bool = True, m_sigmoid: bool = False):
+    def __init__(self, n_mixes: int = 1, a_width: int = 3, hidden_size: int = 128, n_hidden_layers: int = 2,
+                 bias: bool = True, m_sigmoid: bool = False):
         super().__init__(n_mixes=n_mixes, a_width=a_width)
         h = 8
         w = 8
@@ -53,10 +54,15 @@ class DigitsLinearInpainter(
             nn.Softmax(dim=-1)
         )
 
-    def forward(self, X: torch.Tensor, J: torch.Tensor):
+    def forward(self, X: torch.Tensor, J: torch.Tensor, J_2: torch.Tensor):
 
-        X_masked = X * J
-        X_J = torch.cat([X_masked, J], dim=1).float()
+        J_unified = J * J_2
+
+        X = X.clone()
+        X[J_unified == 0] = 0 #X[J_unified == 1].mean()
+        # put the mean of non-mask X where mask is present
+
+        X_J = torch.cat([X, J_unified], dim=1).float()
 
         features = self.extractor(X_J)
 
@@ -64,6 +70,5 @@ class DigitsLinearInpainter(
         m = self.m_extractor(features)
         d = self.d_extractor(features)
         a = self.a_extractor(features)
-
 
         return p, m, a, d
