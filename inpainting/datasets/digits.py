@@ -61,7 +61,6 @@ def train_val_datasets(
     y = digits['target']
     J = []
     for i in range(X.shape[0]):
-        # unknown data to be included in loss is marked by 0
         mask = np.ones((8, 8))
         for mc in mask_configs:
             mask = mc.generate_on_mask(mask)
