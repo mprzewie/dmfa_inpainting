@@ -20,7 +20,7 @@ def digit_with_mask(
         x_j,
         x_j + (j == UNKNOWN_LOSS)
     ]).transpose((1, 2, 0))
-    ax.imshow(vis)
+    ax.imshow(vis, vmin=0, vmax=1, cmap="gray")
     ax.axis("off")
     return ax
 

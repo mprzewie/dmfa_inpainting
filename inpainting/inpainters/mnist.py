@@ -1,7 +1,5 @@
 import torch
-from torch import nn
 
-from inpainting.custom_layers import Reshape, LambdaLayer
 from inpainting.datasets.mask_coding import KNOWN
 from inpainting.inpainters.inpainter import InpainterModule
 
@@ -64,9 +62,8 @@ class MNISTLinearInpainter(
         a = self.a_extractor(features)
         
         return p, m, a, d
-    
 
-    import torch
+
 from torch import nn
 
 from inpainting.custom_layers import Reshape, LambdaLayer

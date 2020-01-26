@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Callable
 
 import numpy as np
 
-from inpainting.datasets.mask_coding import KNOWN
+from inpainting.datasets.mask_coding import KNOWN, UNKNOWN_LOSS
 from inpainting.utils import inpainted
 from inpainting.visualizations.digits import digit_with_mask as vis_digit_mask
 import matplotlib.pyplot as plt
@@ -81,7 +81,10 @@ def visualize_sample(
     m_ind = np.random.choice(np.arange(m.shape[0]), p=p)
     m_inp = m[m_ind].reshape(x.shape)
     x_inp = inpainted(x, j, m_inp)
-    ax_inpainted.imshow(x_inp.reshape(*img_shape), cmap="gray", vmin=0, vmax=1)
+    j_inp = j.copy()
+    j_inp[j_inp==UNKNOWN_LOSS] = KNOWN
+    vis_digit_mask(x_inp, j_inp, ax_inpainted)
+    # ax_inpainted.imshow(x_inp.reshape(*img_shape), cmap="gray", vmin=0, vmax=1)
     ax_inpainted.set_title("j==unk inpainted")
 
     for i, m_ in enumerate(m):
@@ -168,11 +171,14 @@ def visualize_distribution_samples(
     ax_x_masked = ax_row[1]
     vis_digit_mask(x, j, ax_x_masked)
 
+    ax_x_input = ax_row[2]
+    ax_x_input.imshow(
+        (x * (j == KNOWN)).reshape(*img_shape), cmap="gray", vmin=0, vmax=1
+    )
+    ax_x_input.set_title("input to model")
+
     for i, (m_, a_, d_) in enumerate(zip(m, a, d)):
-
-
         sampled_fill = sample_fn(x, m_, a_, d_)
-        x_inp = inpainted(x, j, sampled_fill)
 
         ax_m = ax_row[3 + 3 * i]
         ax_m.imshow(m_.reshape(*img_shape), cmap="gray", vmin=0, vmax=1)
@@ -183,7 +189,10 @@ def visualize_distribution_samples(
         ax_fill.set_title(f"sampled_{i}")
 
         ax_inp = ax_row[3 + 3 * i + 2]
-        ax_inp.imshow(x_inp.reshape(*img_shape), cmap="gray", vmin=0, vmax=1)
+        x_inp = inpainted(x, j, sampled_fill)
+        j_inp = j.copy()
+        j_inp[j_inp == UNKNOWN_LOSS] = KNOWN
+        vis_digit_mask(x_inp, j_inp, ax_inp)
         ax_inp.set_title(f"inpainted_{i}")
 
     for ax in ax_row:
