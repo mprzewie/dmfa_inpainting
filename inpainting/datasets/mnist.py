@@ -23,9 +23,10 @@ DEFAULT_MASK_CONFIGS = (
 
 def random_mask_fn(mask_configs: Sequence[RandomRectangleMaskConfig]):
     def tensor_to_tensor_with_random_mask(image_tensor: torch.Tensor):
-        mask = np.ones((image_tensor.shape[:2]))
+        mask = np.ones((image_tensor.shape[1:3]))
         for mc in mask_configs:
-            mask = mc.generate_on_mask(mask)
+            mask = mc.generate_on_mask(mask.squeeze())
+            mask = np.expand_dims(mask, 0)
         return image_tensor, torch.tensor(mask).float()
 
     return tensor_to_tensor_with_random_mask
