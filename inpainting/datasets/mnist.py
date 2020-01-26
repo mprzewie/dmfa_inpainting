@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple, List, Sequence
+from typing import Tuple, List, Sequence, TypeVar
 
 import numpy as np
 import torch
@@ -33,14 +33,15 @@ def random_mask_fn(mask_configs: Sequence[RandomRectangleMaskConfig]):
 
 def train_val_datasets(
         save_path: Path,
-        mask_configs: Sequence[RandomRectangleMaskConfig] = DEFAULT_MASK_CONFIGS
+        mask_configs: Sequence[RandomRectangleMaskConfig] = DEFAULT_MASK_CONFIGS,
+        ds_type:  MNIST = MNIST
 ) -> Tuple[MNIST, MNIST]:
     transform = tr.Compose([
         tr.ToTensor(),
         tr.Lambda(random_mask_fn(mask_configs=mask_configs))
     ])
 
-    ds_train = MNIST(save_path, train=True, download=True, transform=transform)
-    ds_val = MNIST(save_path, train=False, download=True, transform=transform)
+    ds_train = ds_type(save_path, train=True, download=True, transform=transform)
+    ds_val = ds_type(save_path, train=False, download=True, transform=transform)
 
     return ds_train, ds_val
