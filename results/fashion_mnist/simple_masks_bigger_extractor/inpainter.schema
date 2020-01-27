@@ -1,0 +1,35 @@
+MNISTConvolutionalInpainter(
+  (extractor): Sequential(
+    (0): Conv2d(2, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (1): ReLU()
+    (2): Conv2d(16, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (3): ReLU()
+    (4): Conv2d(32, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (5): ReLU()
+    (6): Conv2d(64, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (7): ReLU()
+    (8): Conv2d(128, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (9): ReLU()
+    (10): Conv2d(256, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (11): ReLU()
+    (12): Reshape(out_size=(-1, 100352))
+  )
+  (a_extractor): Sequential(
+    (0): Linear(in_features=100352, out_features=2352, bias=True)
+    (1): Reshape(out_size=(-1, 1, 3, 784))
+    (2): LambdaLayer()
+  )
+  (m_extractor): Sequential(
+    (0): Linear(in_features=100352, out_features=784, bias=True)
+    (1): Reshape(out_size=(-1, 1, 784))
+  )
+  (d_extractor): Sequential(
+    (0): Linear(in_features=100352, out_features=784, bias=True)
+    (1): Reshape(out_size=(-1, 1, 784))
+    (2): LambdaLayer()
+  )
+  (p_extractor): Sequential(
+    (0): Linear(in_features=100352, out_features=1, bias=True)
+    (1): Softmax(dim=None)
+  )
+)
