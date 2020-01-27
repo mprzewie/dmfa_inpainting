@@ -7,7 +7,7 @@ from inpainting.inpainters.inpainter import InpainterModule
 class MNISTLinearInpainter(
     InpainterModule
 ):
-    def __init__(self, n_mixes: int = 1, a_width: int=3, hidden_size=1024, n_hidden_layers: int = 3):
+    def __init__(self, n_mixes: int = 1, a_width: int = 3, hidden_size=1024, n_hidden_layers: int = 3):
         super().__init__()
 
         h = 28
@@ -51,7 +51,6 @@ class MNISTLinearInpainter(
         )
 
     def forward(self, X, J):
-
         J = J * (J == KNOWN)
         X_masked = X * J
         X_J = torch.cat([X_masked, J], dim=1)
@@ -60,7 +59,7 @@ class MNISTLinearInpainter(
         d = self.d_extractor(features)
         p = self.p_extractor(features)
         a = self.a_extractor(features)
-        
+
         return p, m, a, d
 
 
@@ -73,15 +72,15 @@ from inpainting.inpainters.inpainter import InpainterModule
 class MNISTConvolutionalInpainter(
     InpainterModule
 ):
-    def __init__(self, n_mixes: int = 1, a_width: int=3):
+    def __init__(self, n_mixes: int = 1, last_channels: int = 128, a_width: int = 3, a_amplitude: float = 2):
         super().__init__()
 
         h = 28
         w = 28
         c = 1
         in_size = c * h * w
-        last_channels = 128
         hidden_size = h * w * last_channels
+        self.a_amplitude = a_amplitude
 
         self.extractor = nn.Sequential(
             nn.Conv2d(2, 16, kernel_size=5, padding=2),
@@ -94,8 +93,6 @@ class MNISTConvolutionalInpainter(
             nn.ReLU(),
             Reshape((-1, hidden_size))
         )
-        
-        
 
         self.a_extractor = nn.Sequential(
             nn.Linear(hidden_size, in_size * n_mixes * a_width),
@@ -118,15 +115,12 @@ class MNISTConvolutionalInpainter(
             nn.Linear(hidden_size, n_mixes),
             nn.Softmax()
         )
-        
-    @staticmethod
-    def postprocess_d(d_tensor):
+
+    def postprocess_d(self, d_tensor: torch.Tensor):
         return torch.sigmoid(d_tensor) + 1e-10
-    
-    @staticmethod
-    def postprocess_a(a_tensor):
-        ampl = 0.5
-        return ampl * torch.sigmoid(a_tensor) - (ampl / 2)
+
+    def postprocess_a(self, a_tensor: torch.Tensor):
+        return self.a_amplitude * torch.sigmoid(a_tensor) - (self.a_amplitude / 2)
 
     def forward(self, X, J):
         X_masked = X * J
