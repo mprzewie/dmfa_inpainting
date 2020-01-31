@@ -1,10 +1,10 @@
 from pathlib import Path
-from typing import Tuple, List, Sequence, TypeVar
+from typing import Tuple, Sequence
 
 import numpy as np
 import torch
-from torchvision.datasets import MNIST
 from torchvision import transforms as tr
+from torchvision.datasets import SVHN
 
 from inpainting.datasets.mask_coding import UNKNOWN_LOSS, UNKNOWN_NO_LOSS
 from inpainting.datasets.utils import RandomRectangleMaskConfig
@@ -12,21 +12,20 @@ from inpainting.datasets.utils import RandomRectangleMaskConfig
 DEFAULT_MASK_CONFIGS = (
     RandomRectangleMaskConfig(
         UNKNOWN_LOSS,
-        8,8,2,2
+        12, 12, 0,0,
     ),
-    RandomRectangleMaskConfig(
-        UNKNOWN_NO_LOSS,
-        8,8,2,2
-    )
+    # RandomRectangleMaskConfig(
+    #     UNKNOWN_NO_LOSS,
+    #     8,8,2,2
+    # )
 )
 
 
 def random_mask_fn(mask_configs: Sequence[RandomRectangleMaskConfig]):
     def tensor_to_tensor_with_random_mask(image_tensor: torch.Tensor):
-        mask = np.ones((image_tensor.shape[1:3]))
+        mask = np.ones((3, *image_tensor.shape[1:3]))
         for mc in mask_configs:
-            mask = mc.generate_on_mask(mask.squeeze())
-            mask = np.expand_dims(mask, 0)
+            mask = mc.generate_on_mask(mask)
         return image_tensor, torch.tensor(mask).float()
 
     return tensor_to_tensor_with_random_mask
@@ -35,23 +34,13 @@ def random_mask_fn(mask_configs: Sequence[RandomRectangleMaskConfig]):
 def train_val_datasets(
         save_path: Path,
         mask_configs: Sequence[RandomRectangleMaskConfig] = DEFAULT_MASK_CONFIGS,
-        ds_type:  MNIST = MNIST
-) -> Tuple[MNIST, MNIST]:
-    train_transform = tr.Compose([
+) -> Tuple[SVHN, SVHN]:
+    transform = tr.Compose([
         tr.ToTensor(),
         tr.Lambda(random_mask_fn(mask_configs=mask_configs))
     ])
 
-    val_transform = tr.Compose([
-        tr.ToTensor(),
-        tr.Lambda(random_mask_fn(
-            mask_configs=[
-                m for m in mask_configs if m.value==UNKNOWN_LOSS
-            ] # only the mask which will be inpainted
-        ))
-    ])
-
-    ds_train = ds_type(save_path, train=True, download=True, transform=train_transform)
-    ds_val = ds_type(save_path, train=False, download=True, transform=val_transform)
+    ds_train = SVHN(save_path, split="train", download=True, transform=transform)
+    ds_val = SVHN(save_path, split="test", download=True, transform=transform)
 
     return ds_train, ds_val

@@ -32,7 +32,8 @@ def row_length(
 
 def visualize_sample(
         x: np.ndarray, j: np.ndarray, p: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray, y: int,
-        title_prefixes: Dict[int, str], ax_row: Optional[np.ndarray] = None
+        title_prefixes: Dict[int, str], ax_row: Optional[np.ndarray] = None,
+        drawing_fn: Callable[[np.ndarray, np.ndarray, plt.Axes], None] = vis_digit_mask
 ):
     """
     Args:
@@ -49,7 +50,6 @@ def visualize_sample(
 
     """
     row_len = row_length(x, j, p, m, a, d, y)
-
     if ax_row is None:
         fig, ax_row = plt.subplots(1, row_len)
 
@@ -60,20 +60,20 @@ def visualize_sample(
     title_prefixes = defaultdict(str, title_prefixes)
     ax_x_original = ax_row[0]
 
-    img_shape = (x.shape[1], x.shape[2])
-    ax_x_original.imshow(
-        x.reshape(*img_shape),
-        cmap="gray")
+
+    drawing_fn(x, ax=ax_x_original)
     ax_x_original.set_title(f"{title_prefixes[0]}y_gt = {y}")
 
     ax_x_masked = ax_row[1]
-    vis_digit_mask(x, j, ax_x_masked)
+    drawing_fn(x, j, ax_x_masked)
     ax_x_masked.set_title(title_prefixes[1])
 
     ax_x_input = ax_row[2]
-    ax_x_input.imshow(
-        (x * (j==KNOWN)).reshape(*img_shape), cmap="gray",  vmin=0, vmax=1
+    drawing_fn(
+        (x * (j == KNOWN)),
+        ax=ax_x_input
     )
+
     ax_x_input.set_title("input to model")
 
 
@@ -83,13 +83,21 @@ def visualize_sample(
     x_inp = inpainted(x, j, m_inp)
     j_inp = j.copy()
     j_inp[j_inp==UNKNOWN_LOSS] = KNOWN
-    vis_digit_mask(x_inp, j_inp, ax_inpainted)
+    drawing_fn(
+        x_inp,
+        j_inp,
+        ax_inpainted
+    )
     # ax_inpainted.imshow(x_inp.reshape(*img_shape), cmap="gray", vmin=0, vmax=1)
     ax_inpainted.set_title("j==unk inpainted")
 
     for i, m_ in enumerate(m):
         ax_m = ax_row[4 + i]
-        ax_m.imshow(m_.reshape(*img_shape), cmap="gray", vmin=0, vmax=1)
+        drawing_fn(
+            m_.reshape(*x.shape),
+            ax=ax_m
+        )
+        # ax_m.imshow(m_.reshape(*img_shape), cmap="gray", vmin=0, vmax=1)
         p_form = int(p[i] * 100) / 100
         chosen = "cho " if i == m_ind else ""
         ax_m.set_title(f"{chosen}M_{i}, p={p_form}")
@@ -98,14 +106,20 @@ def visualize_sample(
         for j, a_l in enumerate(a_):
             offset = 4 + m.shape[0] + a.shape[1] * i + j
             ax_a_l = ax_row[offset]
-            ax_a_l.imshow(a_l.reshape(*img_shape), cmap="gray")
+            drawing_fn(
+                a_l.reshape(*x.shape),
+                ax=ax_a_l
+            )
             ttl = f"a_{i}_{j} "
             ax_a_l.set_title(ttl + "m = {0:.2f}".format(np.mean(a_l)))
 
     for i, d_ in enumerate(d):
         offset = 4 + m.shape[0] + a.shape[0] * a.shape[1] + i
         ax_d = ax_row[offset]
-        ax_d.imshow(d_.reshape(*img_shape), cmap="gray")
+        drawing_fn(
+            d_.reshape(*x.shape),
+            ax=ax_d
+        )
         ttl = f"d_{i} "
         ax_d.set_title(ttl + "m = {0:.2f}".format(np.mean(d_)))
     for ax in ax_row:
@@ -137,7 +151,9 @@ def visualize_distribution_samples(
                                 np.ndarray,
                                 np.ndarray,
                                 np.ndarray
-                            ], np.ndarray] = gans_gmms_sample_no_d
+                            ], np.ndarray] = gans_gmms_sample_no_d,
+        drawing_fn: Callable[[np.ndarray, np.ndarray, plt.Axes], None] = vis_digit_mask
+
 ):
     """
     Args:
@@ -163,17 +179,15 @@ def visualize_distribution_samples(
 
     ax_x_original = ax_row[0]
 
-    img_shape = (x.shape[1], x.shape[2])
-    ax_x_original.imshow(
-        x.reshape(*img_shape),
-        cmap="gray")
+    drawing_fn(x, ax=ax_x_original)
 
     ax_x_masked = ax_row[1]
-    vis_digit_mask(x, j, ax_x_masked)
+    drawing_fn(x, j, ax_x_masked)
 
     ax_x_input = ax_row[2]
-    ax_x_input.imshow(
-        (x * (j == KNOWN)).reshape(*img_shape), cmap="gray", vmin=0, vmax=1
+    drawing_fn(
+        (x * (j == KNOWN)),
+        ax=ax_x_input
     )
     ax_x_input.set_title("input to model")
 
@@ -181,18 +195,28 @@ def visualize_distribution_samples(
         sampled_fill = sample_fn(x, m_, a_, d_)
 
         ax_m = ax_row[3 + 3 * i]
-        ax_m.imshow(m_.reshape(*img_shape), cmap="gray", vmin=0, vmax=1)
+        drawing_fn(
+            m_.reshape(*x.shape),
+            ax=ax_m
+        )
         ax_m.set_title(f"m_{i}")
 
         ax_fill = ax_row[3 + 3 * i + 1]
-        ax_fill.imshow(sampled_fill.reshape(*img_shape), cmap="gray", vmin=0, vmax=1)
+        drawing_fn(
+            sampled_fill.reshape(*x.shape),
+            ax=ax_fill
+        )
         ax_fill.set_title(f"sampled_{i}")
 
         ax_inp = ax_row[3 + 3 * i + 2]
         x_inp = inpainted(x, j, sampled_fill)
         j_inp = j.copy()
         j_inp[j_inp == UNKNOWN_LOSS] = KNOWN
-        vis_digit_mask(x_inp, j_inp, ax_inp)
+        drawing_fn(
+            x_inp,
+            j_inp,
+            ax_inp
+        )
         ax_inp.set_title(f"inpainted_{i}")
 
     for ax in ax_row:

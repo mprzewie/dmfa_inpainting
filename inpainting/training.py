@@ -37,8 +37,11 @@ def train_inpainter(
             inpainter.train()
             p, m, a, d = inpainter(x, j)
             loss = loss_fn(x, j, p, m, a, d)
+            print(1, loss)
             loss.backward()
+            print(2)
             optimizer.step()
+            print(3)
             
         inpainter.eval()
         fold_losses = dict()
