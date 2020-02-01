@@ -171,7 +171,7 @@ def visualize_distribution_samples(
 
     """
 
-    row_len = 3 + 3 * m.shape[0]
+    row_len = 3 + 4 * m.shape[0]
     if ax_row is None:
         fig, ax_row = plt.subplots(1, row_len)
 
@@ -195,20 +195,32 @@ def visualize_distribution_samples(
         sampled_fill = sample_fn(x, m_, a_, d_)
 
         ax_m = ax_row[3 + 3 * i]
+        m_ = m_.reshape(*x.shape)
         drawing_fn(
-            m_.reshape(*x.shape),
+            m_,
             ax=ax_m
         )
         ax_m.set_title(f"m_{i}")
 
-        ax_fill = ax_row[3 + 3 * i + 1]
+        ax_m_inp = ax_row[3 + 3* i + 1]
+        x_inp = inpainted(x, j, m_)
+        j_inp = j.copy()
+        j_inp[j_inp == UNKNOWN_LOSS] = KNOWN
+        drawing_fn(
+            x_inp,
+            j_inp,
+            ax_m_inp
+        )
+        ax_m_inp.set_title(f"inp_m_{i}")
+
+        ax_fill = ax_row[3 + 3 * i + 2]
         drawing_fn(
             sampled_fill.reshape(*x.shape),
             ax=ax_fill
         )
-        ax_fill.set_title(f"sampled_{i}")
+        ax_fill.set_title(f"s_{i}")
 
-        ax_inp = ax_row[3 + 3 * i + 2]
+        ax_inp = ax_row[3 + 3 * i + 3]
         x_inp = inpainted(x, j, sampled_fill)
         j_inp = j.copy()
         j_inp[j_inp == UNKNOWN_LOSS] = KNOWN
@@ -217,7 +229,7 @@ def visualize_distribution_samples(
             j_inp,
             ax_inp
         )
-        ax_inp.set_title(f"inpainted_{i}")
+        ax_inp.set_title(f"x_inp_s_{i}")
 
     for ax in ax_row:
         ax.axis("off")
