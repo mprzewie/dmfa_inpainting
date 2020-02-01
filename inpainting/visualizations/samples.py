@@ -23,17 +23,36 @@ def row_length(
     """
     mx, l = a.shape[:2]
     return sum([
-        4,  # x, j, x_input, x_inpainted
-        mx,  # m
+        3,  # x, j, x_input
+        4*mx, #m, x_inp_m, s, x_inp_s
+        
         mx * l,  # a
-        mx  # d
+        mx  # d,
+       
     ])
+
+def cov_sample_no_d(
+        x: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray
+) -> np.ndarray:
+    return np.random.multivariate_normal(
+        m, a.T @ a
+    ).reshape(x.shape)
+
+
+def gans_gmms_sample_no_d(
+        x: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray
+) -> np.ndarray:
+    """Sampling like https://github.com/eitanrich/gans-n-gmms/blob/master/utils/mfa.py#L64"""
+    return (
+            np.random.normal(size=a.shape[0]) @ a + m
+    ).reshape(x.shape)
 
 
 def visualize_sample(
         x: np.ndarray, j: np.ndarray, p: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray, y: int,
         title_prefixes: Dict[int, str], ax_row: Optional[np.ndarray] = None,
-        drawing_fn: Callable[[np.ndarray, np.ndarray, plt.Axes], None] = vis_digit_mask
+        drawing_fn: Callable[[np.ndarray, np.ndarray, plt.Axes], None] = vis_digit_mask,
+        sample_fn=gans_gmms_sample_no_d
 ):
     """
     Args:
@@ -76,35 +95,53 @@ def visualize_sample(
 
     ax_x_input.set_title("input to model")
 
-
-    ax_inpainted = ax_row[3]
-    m_ind = np.random.choice(np.arange(m.shape[0]), p=p)
-    m_inp = m[m_ind].reshape(x.shape)
-    x_inp = inpainted(x, j, m_inp)
-    j_inp = j.copy()
-    j_inp[j_inp==UNKNOWN_LOSS] = KNOWN
-    drawing_fn(
-        x_inp,
-        j_inp,
-        ax_inpainted
-    )
-    # ax_inpainted.imshow(x_inp.reshape(*img_shape), cmap="gray", vmin=0, vmax=1)
-    ax_inpainted.set_title("j==unk inpainted")
-
     for i, m_ in enumerate(m):
-        ax_m = ax_row[4 + i]
+        ax_m = ax_row[3 + 4*i]
         drawing_fn(
             m_.reshape(*x.shape),
             ax=ax_m
         )
-        # ax_m.imshow(m_.reshape(*img_shape), cmap="gray", vmin=0, vmax=1)
         p_form = int(p[i] * 100) / 100
-        chosen = "cho " if i == m_ind else ""
-        ax_m.set_title(f"{chosen}M_{i}, p={p_form}")
+        ax_m.set_title(f"m_{i}, p={p_form}")
+        
+        ax_x_inp_m = ax_row[3 + 4*i+1]
+        m_inp = m_.reshape(x.shape)
+        x_inp = inpainted(x, j, m_inp)
+        j_inp = j.copy()
+        j_inp[j_inp==UNKNOWN_LOSS] = KNOWN
+        drawing_fn(
+            x_inp,
+            j_inp,
+            ax_x_inp_m
+        )
+        ax_x_inp_m.set_title(f"x_inp_m_{i}")
+        a_ = a[i]
+        d_ = d[i]
+        
+        s = sample_fn(x, m_, a_, d_)
+        ax_s= ax_row[3 + 4*i+2]
+        
+        drawing_fn(
+            s,
+            ax=ax_s
+        )
+        ax_s.set_title(f"s_{i}")
+        
+        x_inp_s = inpainted(x, j, s)
+        j_inp = j.copy()
+        j_inp[j_inp == UNKNOWN_LOSS] = KNOWN
+        
+        ax_x_inp_s = ax_row[3 + 4*i+3]
+        drawing_fn(
+            x_inp_s,
+            j=j_inp,
+            ax=ax_x_inp_s
+        )
+        ax_x_inp_s.set_title(f"x_inp_s{i}")
 
     for i, a_ in enumerate(a):
         for j, a_l in enumerate(a_):
-            offset = 4 + m.shape[0] + a.shape[1] * i + j
+            offset = 3 + 4*m.shape[0] + a.shape[1] * i + j
             ax_a_l = ax_row[offset]
             drawing_fn(
                 a_l.reshape(*x.shape),
@@ -114,7 +151,7 @@ def visualize_sample(
             ax_a_l.set_title(ttl + "m = {0:.2f}".format(np.mean(a_l)))
 
     for i, d_ in enumerate(d):
-        offset = 4 + m.shape[0] + a.shape[0] * a.shape[1] + i
+        offset = 3 + 4*m.shape[0] + a.shape[0] * a.shape[1] + i
         ax_d = ax_row[offset]
         drawing_fn(
             d_.reshape(*x.shape),
@@ -126,21 +163,7 @@ def visualize_sample(
         ax.axis("off")
 
 
-def cov_sample_no_d(
-        x: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray
-) -> np.ndarray:
-    return np.random.multivariate_normal(
-        m, a.T @ a
-    ).reshape(x.shape)
 
-
-def gans_gmms_sample_no_d(
-        x: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray
-) -> np.ndarray:
-    """Sampling like https://github.com/eitanrich/gans-n-gmms/blob/master/utils/mfa.py#L64"""
-    return (
-            np.random.normal(size=a.shape[0]) @ a + m
-    ).reshape(x.shape)
 
 
 def visualize_distribution_samples(

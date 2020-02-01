@@ -31,7 +31,8 @@ def digit_with_mask(
 def rgb_with_mask(
         x: np.ndarray,
         j: np.ndarray = None,
-        ax: Optional[Axis] = None
+        ax: Optional[Axis] = None,
+        clip: bool = True
 ):
     j = np.ones_like(x) * KNOWN if j is None else j
     if ax is None:
@@ -42,8 +43,11 @@ def rgb_with_mask(
     x_j[0][j[0]==UNKNOWN_NO_LOSS] = 1
 
     x_j = x_j.transpose((1, 2, 0))
-
-    ax.imshow(x_j, vmin=0, vmax=1) #, cmap="gray")
+    
+    x_j = np.clip(x_j, 0, 1) if clip else x_j
+    ax.imshow(
+        x_j
+    ) #, cmap="gray")
     ax.axis("off")
     return ax
 
