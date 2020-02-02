@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Tuple, Sequence
 
 from torchvision import transforms as tr
-from torchvision.datasets import SVHN
+from torchvision.datasets import CelebA
 
 from inpainting.datasets.mask_coding import UNKNOWN_LOSS
 from inpainting.datasets.rgb_utils import random_mask_fn
@@ -23,8 +23,13 @@ DEFAULT_MASK_CONFIGS = (
 def train_val_datasets(
         save_path: Path,
         mask_configs: Sequence[RandomRectangleMaskConfig] = DEFAULT_MASK_CONFIGS,
-) -> Tuple[SVHN, SVHN]:
-    transform = tr.Compose([
+) -> Tuple[CelebA, CelebA]:
+    train_transform = tr.Compose([
+        tr.ToTensor(),
+        tr.Lambda(random_mask_fn(mask_configs=mask_configs))
+    ])
+
+    val_transform = tr.Compose([
         tr.ToTensor(),
         tr.Lambda(random_mask_fn(
             mask_configs=[
@@ -33,7 +38,7 @@ def train_val_datasets(
         ))
     ])
 
-    ds_train = SVHN(save_path, split="train", download=True, transform=transform)
-    ds_val = SVHN(save_path, split="test", download=True, transform=transform)
+    ds_train = CelebA(save_path, split="train", download=True, transform=train_transform)
+    ds_val = CelebA(save_path, split="val", download=True, transform=val_transform)
 
     return ds_train, ds_val
