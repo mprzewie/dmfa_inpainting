@@ -407,3 +407,29 @@ def _r2_masked_sample_loss(
 
 _nll_masked_batch_loss = _batch_loss_fn(_nll_masked_sample_loss_v1)
 _r2_masked_batch_loss = _batch_loss_fn(_r2_masked_sample_loss)
+
+def _nll_masked_sample_loss_v0(
+        x: torch.Tensor,
+        j: torch.Tensor,
+        p: torch.Tensor,
+        m: torch.Tensor,
+        a: torch.Tensor,
+        d: torch.Tensor
+) -> torch.Tensor:
+    x_c_hw = x.reshape(x.shape[0], x.shape[1] * x.shape[2])
+    j_hw = j.reshape(-1)
+    mask_inds = (j_hw == UNKNOWN_LOSS).nonzero().squeeze()
+    x_masked = torch.index_select(x_c_hw, 1, mask_inds)
+    a_masked = torch.index_select(a, 2, mask_inds)
+    m_masked, d_masked = [
+        torch.index_select(t, 1, mask_inds)
+        for t in [m, d]
+    ]
+    losses_for_p = []
+    for (p_i, m_i, d_i, a_i) in zip(p, m_masked, d_masked, a_masked):
+        if a.shape[1] < 0:
+            losses_for_p.append(torch.tensor(0.0, requires_grad=False))
+        cov = (a_i.T @ a_i) + torch.diag(d_i ** 2)
+        mvn_d = MultivariateNormal(m_i, cov)  # calculate this manually
+        losses_for_p.append(- mvn_d.log_prob(x_masked))
+    return torch.stack(losses_for_p).sum()

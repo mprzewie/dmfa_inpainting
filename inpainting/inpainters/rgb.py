@@ -13,9 +13,9 @@ class RGBInpainter(
         n_mixes: int = 1,
         h: int = 32,
         w: int = 32,
-        last_channels: int = 128,
+        last_channels: int = 12,
         a_width: int = 3,
-        a_amplitude: float = 3
+        a_amplitude: float = 2
         ):
         super().__init__()
         c = 3
