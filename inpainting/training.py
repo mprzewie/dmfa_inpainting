@@ -20,7 +20,8 @@ def train_inpainter(
     losses_to_log: Dict[str, InpainterLossFn] = None,
     device: torch.device = torch.device("cpu"),
     tqdm_loader: bool = False,
-    history_start: Optional[List] = None
+    history_start: Optional[List] = None,
+    max_benchmark_batches: int = 50,
 ) -> List:
     if losses_to_log is None:
         losses_to_log = dict()
@@ -60,6 +61,8 @@ def train_inpainter(
                     sample_results[fold] = (
                         x, j, p, m, a, d, y
                     )
+                if i < max_benchmark_batches:
+                    break
             fold_losses[fold] = losses
 
         history.append(dict(

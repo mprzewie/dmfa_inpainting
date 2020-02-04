@@ -106,3 +106,6 @@ venv.bak/
 .idea/
 notebooks/data/
 data/
+
+*.pkl
+*.state

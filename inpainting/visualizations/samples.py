@@ -81,7 +81,7 @@ def visualize_sample(
 
 
     drawing_fn(x, ax=ax_x_original)
-    ax_x_original.set_title(f"{title_prefixes[0]}y_gt = {y}")
+    ax_x_original.set_title(f"{title_prefixes[0]} original")
 
     ax_x_masked = ax_row[1]
     drawing_fn(x, j, ax_x_masked)

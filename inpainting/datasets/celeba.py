@@ -11,7 +11,7 @@ from inpainting.datasets.utils import RandomRectangleMaskConfig
 DEFAULT_MASK_CONFIGS = (
     RandomRectangleMaskConfig(
         UNKNOWN_LOSS,
-        12, 12, 0,0,
+        15, 15, 0,0,
     ),
     # RandomRectangleMaskConfig(
     #     UNKNOWN_NO_LOSS,
@@ -25,11 +25,17 @@ def train_val_datasets(
         mask_configs: Sequence[RandomRectangleMaskConfig] = DEFAULT_MASK_CONFIGS,
 ) -> Tuple[CelebA, CelebA]:
     train_transform = tr.Compose([
+        tr.Lambda(lambda im: im.convert("RGB")),
+        tr.Resize((50,50)),
+        tr.CenterCrop((32,32)),
         tr.ToTensor(),
         tr.Lambda(random_mask_fn(mask_configs=mask_configs))
     ])
 
     val_transform = tr.Compose([
+        tr.Lambda(lambda im: im.convert("RGB")),
+        tr.Resize((50,50)),
+        tr.CenterCrop((32,32)),
         tr.ToTensor(),
         tr.Lambda(random_mask_fn(
             mask_configs=[
@@ -39,6 +45,6 @@ def train_val_datasets(
     ])
 
     ds_train = CelebA(save_path, split="train", download=True, transform=train_transform)
-    ds_val = CelebA(save_path, split="val", download=True, transform=val_transform)
+    ds_val = CelebA(save_path, split="valid", download=True, transform=val_transform)
 
     return ds_train, ds_val
