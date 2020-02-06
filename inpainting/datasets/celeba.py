@@ -4,7 +4,7 @@ from typing import Tuple, Sequence
 from torchvision import transforms as tr
 from torchvision.datasets import CelebA
 
-from inpainting.datasets.mask_coding import UNKNOWN_LOSS
+from inpainting.datasets.mask_coding import UNKNOWN_LOSS, UNKNOWN_NO_LOSS
 from inpainting.datasets.rgb_utils import random_mask_fn
 from inpainting.datasets.utils import RandomRectangleMaskConfig
 
@@ -13,10 +13,10 @@ DEFAULT_MASK_CONFIGS = (
         UNKNOWN_LOSS,
         15, 15, 0,0,
     ),
-    # RandomRectangleMaskConfig(
-    #     UNKNOWN_NO_LOSS,
-    #     8,8,2,2
-    # )
+    RandomRectangleMaskConfig(
+        UNKNOWN_NO_LOSS,
+        15,15, 0,0
+    )
 )
 
 
