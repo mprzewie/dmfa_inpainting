@@ -1,4 +1,4 @@
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Dict
 
 import numpy as np
 import torch
@@ -433,3 +433,41 @@ def _nll_masked_sample_loss_v0(
         mvn_d = MultivariateNormal(m_i, cov)  # calculate this manually
         losses_for_p.append(- mvn_d.log_prob(x_masked))
     return torch.stack(losses_for_p).sum()
+
+def nll_masked_batch_loss_components(
+        X: torch.Tensor,
+        J: torch.Tensor,
+        P: torch.Tensor,
+        M: torch.Tensor,
+        A: torch.Tensor,
+        D: torch.Tensor,
+) -> Dict[str, torch.Tensor]:
+    """A loss which allows for masks of varying size"""
+
+    x_s, p_s, m_s, a_s, d_s, d_s_inv = zero_batch_at_mask_indices(X, J, P, M, A, D)
+
+    x_minus_means = (x_s - m_s).unsqueeze(1)  # ?
+
+    d_s_inv_rep = d_s_inv.unsqueeze(-2).repeat_interleave(dim=-2, repeats=a_s.shape[-2])
+    a_s_t = a_s.transpose(1, 2)
+
+    a_s_d_inv = a_s * d_s_inv_rep
+    l_s = a_s_d_inv.bmm(a_s_t)
+    l_s = l_s + torch.diag_embed(torch.ones_like(l_s[:, :, 0]))
+    # equations (4) and (6) from https://papers.nips.cc/paper/7826-on-gans-and-gmms.pdf
+    covs_inv_woodbury = torch.diag_embed(d_s_inv) - a_s_d_inv.transpose(1, 2).bmm(l_s.inverse()).bmm(
+        a_s_d_inv)  # M.data(?)[:, range(100), range(100)] = d_inv (wektory, nie macierze diagonalne) - M[:, range(100), range(100)]
+
+    log_dets_lemma = l_s.logdet() + (d_s + (d_s == 0)).log().sum(dim=1)
+    log_noms = x_minus_means.bmm(covs_inv_woodbury).bmm(x_minus_means.transpose(1, 2)).reshape(-1)
+    return {
+        comp_name: (p_s * (1 / 2) * comp).sum() / X.shape[0]
+        for comp_name, comp in [
+            ("log_noms", log_noms),
+            ("x_minus_means", x_minus_means),
+            ("log_dets", log_dets_lemma),
+            ("log_2_pi", log_2pi * (d_s != 0).sum(dim=1))
+        ]
+    }
+    # losses = p_s * (1 / 2) * (log_noms + log_dets_lemma + log_2pi * (d_s != 0).sum(dim=1))
+    # return losses.sum() / X.shape[0]
