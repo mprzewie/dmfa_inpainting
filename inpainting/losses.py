@@ -460,14 +460,16 @@ def nll_masked_batch_loss_components(
 
     log_dets_lemma = l_s.logdet() + (d_s + (d_s == 0)).log().sum(dim=1)
     log_noms = x_minus_means.bmm(covs_inv_woodbury).bmm(x_minus_means.transpose(1, 2)).reshape(-1)
-    return {
+    log_2_pi_res = log_2pi * (d_s != 0).sum(dim=1)
+    result= {
         comp_name: (p_s * (1 / 2) * comp).sum() / X.shape[0]
         for comp_name, comp in [
             ("log_noms", log_noms),
-            ("x_minus_means", x_minus_means),
+            ("x_minus_means", x_minus_means.sum(dim=[1,2])),
             ("log_dets", log_dets_lemma),
-            ("log_2_pi", log_2pi * (d_s != 0).sum(dim=1))
+            ("log_2_pi", log_2_pi_res ),
+            ("x_minus_means_2", (x_minus_means ** 2).sum(dim=[1,2])),
         ]
     }
-    # losses = p_s * (1 / 2) * (log_noms + log_dets_lemma + log_2pi * (d_s != 0).sum(dim=1))
-    # return losses.sum() / X.shape[0]
+
+    return result

@@ -10,7 +10,9 @@ from inpainting.datasets.mask_coding import KNOWN, UNKNOWN_LOSS, UNKNOWN_NO_LOSS
 def digit_with_mask(
         x: np.ndarray,
         j: np.ndarray = None,
-        ax: Optional[Axis] = None
+        ax: Optional[Axis] = None,
+        clip: bool = True
+
 ):
     j = np.ones_like(x) * KNOWN if j is None else j
 
@@ -22,7 +24,8 @@ def digit_with_mask(
         x_j,
         x_j + (j == UNKNOWN_LOSS)
     ]).transpose((1, 2, 0))
-
+    
+    vis = np.clip(vis, 0, 1) if clip else vis
     ax.imshow(vis, vmin=0, vmax=1, cmap="gray")
     ax.axis("off")
     return ax
