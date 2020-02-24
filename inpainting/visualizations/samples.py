@@ -144,8 +144,9 @@ def visualize_sample(
             offset = 3 + 4*m.shape[0] + a.shape[1] * i + j
             ax_a_l = ax_row[offset]
             drawing_fn(
-                a_l.reshape(*x.shape),
-                ax=ax_a_l
+                a_l.reshape(*x.shape) + (1/2),
+                ax=ax_a_l,
+                clip=False
             )
             ttl = f"a_{i}_{j} "
             ax_a_l.set_title(ttl + "m = {0:.2f}".format(np.mean(a_l)))
