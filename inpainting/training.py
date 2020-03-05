@@ -27,6 +27,8 @@ def train_inpainter(
     if losses_to_log is None:
         losses_to_log = dict()
     losses_to_log["objective"] = loss_fn
+    
+    inpainter = inpainter.to(device)
 
     history = history_start if history_start is not None else [eval_inpainter(
             inpainter,
@@ -37,7 +39,6 @@ def train_inpainter(
             max_benchmark_batches=max_benchmark_batches
         )]
 
-    inpainter = inpainter.to(device)
     for e in tqdm(range(n_epochs)):
         dl_iter = enumerate(data_loader_train)
         if tqdm_loader:

@@ -473,3 +473,20 @@ def nll_masked_batch_loss_components(
     }
 
     return result
+
+def loss_with_mixup(loss_fn, mixup_rate = 1/ 2):
+    def loss(
+        X: torch.Tensor,
+        J: torch.Tensor,
+        P: torch.Tensor,
+        M: torch.Tensor,
+        A: torch.Tensor,
+        D: torch.Tensor,
+    ):
+        xs = X.shape[0]
+        n = int(xs * mixup_rate)
+        perm = torch.randperm(n)
+        X_perm = X.clone()
+        X_perm[-n:] = X_perm[-n:][perm]
+        return loss_fn(X_perm,J,P,M,A,D)
+    return loss
