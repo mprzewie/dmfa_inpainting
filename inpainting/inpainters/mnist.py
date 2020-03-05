@@ -1,5 +1,7 @@
 import torch
+from torch import nn
 
+from inpainting.custom_layers import Reshape, LambdaLayer
 from inpainting.datasets.mask_coding import KNOWN
 from inpainting.inpainters.inpainter import InpainterModule
 
@@ -61,12 +63,6 @@ class MNISTLinearInpainter(
         a = self.a_extractor(features)
 
         return p, m, a, d
-
-
-from torch import nn
-
-from inpainting.custom_layers import Reshape, LambdaLayer
-from inpainting.inpainters.inpainter import InpainterModule
 
 
 class MNISTConvolutionalInpainter(
@@ -133,4 +129,50 @@ class MNISTConvolutionalInpainter(
         p = self.p_extractor(features)
         a = self.a_extractor(features)
 
+        return p, m, a, d
+
+
+class Imputer(nn.Module):
+    """
+    Copied from
+    https://github.com/steveli/misgan/blob/master/misgan.ipynb
+    """
+    def __init__(self, arch=(512, 512)):
+        super().__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(784, arch[0]),
+            nn.ReLU(),
+            nn.Linear(arch[0], arch[1]),
+            nn.ReLU(),
+            nn.Linear(arch[1], arch[0]),
+            nn.ReLU(),
+            nn.Linear(arch[0], 784),
+        )
+
+    def forward(self, data, mask, noise):
+        net = data * mask + noise * (1 - mask)
+        net = net.view(data.shape[0], -1)
+        net = self.fc(net)
+        net = torch.sigmoid(net).view(data.shape)
+        return data * mask + net * (1 - mask), net
+
+
+class MNISTMisganInpainterInterface(
+    InpainterModule
+):
+    def __init__(self, a_width: int = 3):
+        super().__init__(a_width)
+        self.imputer = Imputer()
+
+    def forward(self, X: torch.Tensor, J: torch.Tensor):
+        X_masked = X * J
+        batch_size = X.shape[0]
+        device = next(self.parameters()).device
+        impu_noise = torch.empty(batch_size, 1, 28, 28, device=device)
+        impu_noise.uniform_()
+        _, m = self.imputer(X_masked, J, impu_noise)
+        m = m.reshape(batch_size, 1,  -1)
+        p = torch.ones(size=(batch_size, )).to(device)
+        a = torch.zeros(size=(batch_size, 1, self.a_width, 28*28))
+        d = torch.zeros_like(m)
         return p, m, a, d
