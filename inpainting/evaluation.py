@@ -1,3 +1,5 @@
+from typing import Dict, List, Callable
+
 import numpy as np
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 
@@ -29,7 +31,7 @@ def outputs_to_images(
     """
 
     original = x.transpose((1, 2, 0))
-    mask = j.transpose((1,2, 0))
+    mask = j.transpose((1, 2, 0))
     masked = original * (mask == KNOWN)
     means = [
         m_.reshape(x.shape).transpose((1, 2, 0))
@@ -58,7 +60,7 @@ def outputs_to_images(
         **{
             f"means_{i}": m_
             for (i, m_) in enumerate(means)
-          },
+        },
         **{
             f"inpainted_means_{i}": m_
             for (i, m_) in enumerate(inpainted_with_means)
@@ -73,3 +75,28 @@ def outputs_to_images(
         }
 
     }
+
+
+MNIST_metrics = {
+    "structural_similarity": structural_similarity,
+    "peak_signal_noise_ratio": peak_signal_noise_ratio
+}
+
+def images_metrics(
+        img_dict: Dict[str, np.ndarray],
+        metrics_fns: Dict[str, Callable[
+            [np.ndarray, np.ndarray],
+            float
+        ]] = MNIST_metrics
+) -> List[Dict]:
+    original = img_dict["original"]
+    return [
+        {
+            "img_kind": k,
+            **{
+                m_name: m(original, img)
+                for (m_name, m) in metrics_fns
+            }
+        }
+        for (k, img) in img_dict.items()
+    ]
