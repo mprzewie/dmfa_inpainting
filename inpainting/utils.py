@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Tuple, List
 
 import numpy as np
 import torch
@@ -49,14 +49,10 @@ def predictions_for_entire_loader(
         inpainter: InpainterModule,
         data_loader: DataLoader,
         device: torch.device = torch.device("cpu")
-) -> Dict[str, np.ndarray]:
-    X = []
-    J = []
-    Y = []
-    P = []
-    M = []
-    A = []
-    D = []
+) -> List[Tuple[
+    np.ndarray, ...
+]]:
+    results = []
     for i, ((x, j), y) in tqdm(enumerate(data_loader)):
         x, j, y = [t.to(device) for t in [x, j, y]]
         p, m, a, d = inpainter(x, j)
@@ -68,20 +64,6 @@ def predictions_for_entire_loader(
                 t.detach().cpu().numpy()
                 for t in (x_, j_, y_, p_, m_, a_, d_)
             ]
-            X.append(x_)
-            J.append(j_)
-            Y.append(y_)
-            P.append(p_)
-            M.append(m_)
-            A.append(a_)
-            D.append(d_)
+            results.append((x_, j_, p_, m_, a_, d_, y_))
 
-    return {
-        "X": np.array(X),
-        "J": np.array(J),
-        "Y": np.array(Y),
-        "P": np.array(P),
-        "M": np.array(M),
-        "A": np.array(A),
-        "D": np.array(D)
-    }
+    return results
