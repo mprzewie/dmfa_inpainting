@@ -54,7 +54,7 @@ def outputs_to_images(
     return {
         "original": original,
         "mask": mask,
-        "masked": masked
+        "masked": masked,
         **{
             f"means_{i}": m_
             for (i, m_) in enumerate(means)
