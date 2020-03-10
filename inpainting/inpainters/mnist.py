@@ -172,7 +172,7 @@ class MNISTMisganInpainterInterface(
         impu_noise.uniform_()
         _, m = self.imputer(X_masked, J, impu_noise)
         m = m.reshape(batch_size, 1,  -1)
-        p = torch.ones(size=(batch_size, )).to(device)
+        p = torch.ones(size=(batch_size, 1,)).to(device)
         a = torch.zeros(size=(batch_size, 1, self.a_width, 28*28))
         d = torch.zeros_like(m)
         return p, m, a, d

@@ -6,7 +6,7 @@ import torch
 from torchvision.datasets import MNIST
 from torchvision import transforms as tr
 
-from inpainting.datasets.mask_coding import UNKNOWN_LOSS, UNKNOWN_NO_LOSS
+from inpainting.datasets.mask_coding import UNKNOWN_LOSS, UNKNOWN_NO_LOSS, KNOWN
 from inpainting.datasets.utils import RandomRectangleMaskConfig
 
 DEFAULT_MASK_CONFIGS = (
@@ -45,7 +45,7 @@ def train_val_datasets(
         tr.ToTensor(),
         tr.Lambda(random_mask_fn(
             mask_configs=[
-                m for m in mask_configs if m.value==UNKNOWN_LOSS
+                m for m in mask_configs if m.value==UNKNOWN_LOSS or m.value == KNOWN
             ] # only the mask which will be inpainted
         ))
     ])
