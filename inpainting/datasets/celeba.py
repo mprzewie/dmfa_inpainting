@@ -23,11 +23,13 @@ DEFAULT_MASK_CONFIGS = (
 def train_val_datasets(
         save_path: Path,
         mask_configs: Sequence[RandomRectangleMaskConfig] = DEFAULT_MASK_CONFIGS,
+        resize_size: Tuple[int, int] = (50,50),
+        crop_size: Tuple[int, int] = (32, 32),
 ) -> Tuple[CelebA, CelebA]:
     train_transform = tr.Compose([
         tr.Lambda(lambda im: im.convert("RGB")),
-        tr.Resize((50,50)),
-        tr.CenterCrop((32,32)),
+        tr.Resize(resize_size),
+        tr.CenterCrop(crop_size),
         tr.ToTensor(),
         tr.Lambda(random_mask_fn(mask_configs=mask_configs))
     ])
