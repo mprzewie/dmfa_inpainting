@@ -52,9 +52,11 @@ def predictions_for_entire_loader(
 ) -> List[Tuple[
     np.ndarray, ...
 ]]:
+    inpainter.to(device)
     results = []
     for i, ((x, j), y) in tqdm(enumerate(data_loader)):
         x, j, y = [t.to(device) for t in [x, j, y]]
+        print(x.shape)
         p, m, a, d = inpainter(x, j)
 
         for (x_, j_, y_, p_, m_, a_, d_) in zip(

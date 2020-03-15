@@ -36,8 +36,8 @@ def train_val_datasets(
 
     val_transform = tr.Compose([
         tr.Lambda(lambda im: im.convert("RGB")),
-        tr.Resize((50,50)),
-        tr.CenterCrop((32,32)),
+        tr.Resize(resize_size),
+        tr.CenterCrop(crop_size),
         tr.ToTensor(),
         tr.Lambda(random_mask_fn(
             mask_configs=[
