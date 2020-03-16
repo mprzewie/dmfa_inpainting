@@ -2,6 +2,7 @@ import torch
 from torch import nn
 
 from inpainting.custom_layers import Reshape, LambdaLayer
+from inpainting.datasets.mask_coding import KNOWN
 from inpainting.inpainters.inpainter import InpainterModule
 
 
@@ -64,6 +65,7 @@ class RGBInpainter(
         return self.a_amplitude * torch.sigmoid(a_tensor) - (self.a_amplitude / 2)
 
     def forward(self, X, J):
+        J = J * (J == KNOWN)
         X_masked = X * J
         X_J = torch.cat([X_masked, J], dim=1)
 

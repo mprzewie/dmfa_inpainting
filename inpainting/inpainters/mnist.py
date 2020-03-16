@@ -119,6 +119,7 @@ class MNISTConvolutionalInpainter(
         return self.a_amplitude * torch.sigmoid(a_tensor) - (self.a_amplitude / 2)
 
     def forward(self, X, J):
+        J = J * (J == KNOWN)
         X_masked = X * J
         X_J = torch.cat([X_masked, J], dim=1)
 

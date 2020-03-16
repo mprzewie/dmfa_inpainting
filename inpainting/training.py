@@ -6,6 +6,7 @@ from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from inpainting.datasets.mask_coding import KNOWN
 from inpainting.inpainters.inpainter import InpainterModule
 from inpainting.losses import InpainterLossFn
 
@@ -45,9 +46,12 @@ def train_inpainter(
             dl_iter = tqdm(dl_iter)
         for i, ((x,j), y) in dl_iter:
             x, j, y = [t.to(device) for t in [x,j, y]]
+            j_unknown = j * (j == KNOWN)
+            x_masked = x * j_unknown
             inpainter.zero_grad()
             inpainter.train()
-            p, m, a, d = inpainter(x, j)
+
+            p, m, a, d = inpainter(x_masked, j_unknown)
             loss = loss_fn(x, j, p, m, a, d)
             loss.backward()
             optimizer.step()
