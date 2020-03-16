@@ -94,13 +94,14 @@ class Imputer(nn.Module):
         self.transform = lambda x: torch.sigmoid(x)
 
     def forward(self, input, mask, noise):
-        net = input * mask + noise * (1 - mask)
+        net = input * mask
+        net = net + noise * (1- mask)
         net = self.imputer_net(net)
         net = self.transform(net)
         # NOT replacing observed part with input data for computing
         # autoencoding loss.
         # return input * mask + net * (1 - mask)
-        return net
+        return net, net
 
 
 class UNetImputer(Imputer):
@@ -122,12 +123,13 @@ class RGBMisganInpainterInterface(
         b, c, h, w = X.shape
         impu_noise = torch.empty(b, c, h, w, device=device)
         impu_noise.uniform_()
-
+        
         J_bhw = J.mean(dim=1) # flatten along channels dimension
-        _, m = self.imputer(X_masked, J_bhw, impu_noise)
+
+        _, m = self.imputer(X_masked, J, impu_noise)
 
         m = m.reshape(b, 1, -1)
         p = torch.ones(size=(b, 1,)).to(device)
-        a = torch.zeros(size=(b, 1, self.a_width, -1))
+        a = torch.zeros(size=(b, 1, self.a_width, c*h*w))
         d = torch.zeros_like(m)
         return p, m, a, d
