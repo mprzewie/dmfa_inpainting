@@ -150,8 +150,8 @@ class MNISTFullyConvolutionalInpainter(
         h_w: Tuple[int, int] = (28, 28)
     ):
         super().__init__()
-
         c = 1
+        h, w = h_w
         in_size = c * h * w
         # hidden_size = h * w * last_channels
         self.a_amplitude = a_amplitude
