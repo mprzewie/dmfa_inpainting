@@ -141,23 +141,22 @@ class MNISTFullyConvolutionalInpainter(
     InpainterModule
 ):
     def __init__(
-        self, 
+        self,
+        extractor: nn.Module,
         n_mixes: int = 1, 
-        last_channels: int = 128, 
-        ngf: int = 128,
-        a_width: int = 3, 
-        a_amplitude: float = 2, 
-        h_w: Tuple[int, int] = (28,28)
+        last_channels: int = 128,
+        a_width: int = 3,
+        a_amplitude: float = 2,
+        h_w: Tuple[int, int] = (28, 28)
     ):
         super().__init__()
 
-        h, w =h_w
         c = 1
         in_size = c * h * w
-        hidden_size = h * w * last_channels
+        # hidden_size = h * w * last_channels
         self.a_amplitude = a_amplitude
         
-        self.extractor = UNet(input_nc=2, output_nc=last_channels, layers=5, ngf=ngf)
+        self.extractor = extractor
 
         self.a_extractor = nn.Sequential(
             nn.Conv2d(last_channels, last_channels, kernel_size=5, padding=2),
@@ -189,7 +188,6 @@ class MNISTFullyConvolutionalInpainter(
         self.p_extractor = nn.Sequential(
             nn.Conv2d(last_channels, 1, kernel_size=(h,w), padding=0),
             Reshape((-1, n_mixes)),
-#             nn.Linear(hidden_size, n_mixes),
             nn.Softmax()
         )
 
