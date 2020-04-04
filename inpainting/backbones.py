@@ -100,13 +100,14 @@ def conv_relu_bn(in_channels: int, out_channels: int, kernel_size: int = 3) -> n
 
 def down_up_backbone(
         chw: Tuple[int, int, int],
-        depth: int, firct_channels: int = 16,
+        depth: int,
+        first_channels: int = 16,
         last_channels: int = 1
 ) -> nn.Module:
     c, h, w = chw
     down = [
-        conv_relu_bn(c, firct_channels),
-        nn.Conv2d(firct_channels, firct_channels, kernel_size=3, padding=1, stride=2)
+        conv_relu_bn(c, first_channels),
+        nn.Conv2d(first_channels, first_channels, kernel_size=3, padding=1, stride=2)
     ]
 
     up = [
@@ -115,8 +116,8 @@ def down_up_backbone(
     ]
     for i in range(1, depth):
         down = down + [
-            conv_relu_bn(firct_channels * (2 ** (i - 1)), firct_channels * (2 ** i)),
-            nn.Conv2d(firct_channels * (2 ** i), firct_channels * (2 ** i), kernel_size=3, padding=1, stride=2)
+            conv_relu_bn(first_channels * (2 ** (i - 1)), first_channels * (2 ** i)),
+            nn.Conv2d(first_channels * (2 ** i), first_channels * (2 ** i), kernel_size=3, padding=1, stride=2)
         ]
 
         up = [
@@ -129,7 +130,7 @@ def down_up_backbone(
 
     h_d = h // (2 ** depth)
     w_d = w // (2 ** depth)
-    c_d_i = firct_channels * (2 ** (depth-1))
+    c_d_i = first_channels * (2 ** (depth - 1))
     c_d_o = last_channels * (2 ** (depth-1))
     modules = down + [
         Reshape((-1, c_d_i * h_d * w_d)),
