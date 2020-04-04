@@ -1,0 +1,22 @@
+,imputer_model,img_kind,structural_similarity,peak_signal_noise_ratio
+0,gmm_missing_and_hidden,inpainted_means_0,0.80 ± 0.07,17.92 ± 2.41
+1,gmm_missing_and_hidden,inpainted_samples_0,0.69 ± 0.10,14.51 ± 2.64
+2,gmm_missing_and_hidden,mask,-0.02 ± 0.06,1.38 ± 0.24
+3,gmm_missing_and_hidden,masked,0.64 ± 0.10,inf ± nan
+4,gmm_missing_and_hidden,means_0,0.66 ± 0.07,15.84 ± 1.84
+5,gmm_missing_and_hidden,original,1.00 ± 0.00,inf ± nan
+6,gmm_missing_and_hidden,samples_0,0.44 ± 0.14,12.24 ± 2.28
+7,gmm_only_hidden,inpainted_means_0,0.82 ± 0.07,18.40 ± 2.85
+8,gmm_only_hidden,inpainted_samples_0,0.74 ± 0.10,15.54 ± 2.81
+9,gmm_only_hidden,mask,-0.02 ± 0.06,1.37 ± 0.24
+10,gmm_only_hidden,masked,0.64 ± 0.10,inf ± nan
+11,gmm_only_hidden,means_0,0.69 ± 0.08,16.18 ± 2.15
+12,gmm_only_hidden,original,1.00 ± 0.00,inf ± nan
+13,gmm_only_hidden,samples_0,0.55 ± 0.13,13.59 ± 2.30
+14,misgan,inpainted_means_0,0.76 ± 0.11,15.34 ± 2.85
+15,misgan,inpainted_samples_0,0.76 ± 0.11,15.34 ± 2.85
+16,misgan,mask,-0.01 ± 0.06,1.38 ± 0.24
+17,misgan,masked,0.64 ± 0.10,12.95 ± 2.21
+18,misgan,means_0,0.51 ± 0.14,11.75 ± 1.67
+19,misgan,original,1.00 ± 0.00,inf ± nan
+20,misgan,samples_0,0.51 ± 0.14,11.75 ± 1.67

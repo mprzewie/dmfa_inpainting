@@ -34,14 +34,17 @@ def random_mask_fn(mask_configs: Sequence[RandomRectangleMaskConfig]):
 def train_val_datasets(
         save_path: Path,
         mask_configs: Sequence[RandomRectangleMaskConfig] = DEFAULT_MASK_CONFIGS,
-        ds_type:  MNIST = MNIST
+        ds_type:  MNIST = MNIST,
+        resize_size: Tuple[int,int] =(28,28)
 ) -> Tuple[MNIST, MNIST]:
     train_transform = tr.Compose([
+        tr.Resize(resize_size),
         tr.ToTensor(),
         tr.Lambda(random_mask_fn(mask_configs=mask_configs))
     ])
 
     val_transform = tr.Compose([
+        tr.Resize(resize_size),
         tr.ToTensor(),
         tr.Lambda(random_mask_fn(
             mask_configs=[

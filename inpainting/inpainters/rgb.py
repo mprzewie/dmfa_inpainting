@@ -75,5 +75,5 @@ class RGBInpainter(
         d = self.d_extractor(features)
         p = self.p_extractor(features)
         a = self.a_extractor(features)
-
+#         print(p.shape, m.shape, a.shape, d.shape)
         return p, m, a, d
