@@ -30,6 +30,7 @@ def nll_masked_batch_loss(
     """A loss which allows for masks of varying size"""
 
     x_s, p_s, m_s, a_s, d_s, d_s_inv = zero_batch_at_mask_indices(X, J, P, M, A, D)
+    
 
     x_minus_means = (x_s - m_s).unsqueeze(1)  # ?
 
@@ -47,6 +48,9 @@ def nll_masked_batch_loss(
     # a hack: I add 1 where d_s == 0 so that d_s.log() is zero where d_s == 0
     log_noms = x_minus_means.bmm(covs_inv_woodbury).bmm(x_minus_means.transpose(1, 2)).reshape(-1)
     losses = p_s * (1 / 2) * (log_noms + log_dets_lemma + log_2pi * (d_s != 0).sum(dim=1))
+    
+#     print([t.sum().item() for t in [p_s, log_noms, log_dets_lemma, l_s.logdet(), l_s.log(), l_s.det()]])
+#     print("----")
     return losses.sum() / X.shape[0]
 
 
@@ -90,7 +94,9 @@ def zero_batch_at_mask_indices(
     J_b_chw = J.reshape(b, chw)
     l = A.shape[2]
     mask_inv = (J_b_chw == UNKNOWN_LOSS).float()
-    X_bmx_chw = X_b_chw.unsqueeze(1).repeat_interleave(mx, 1).reshape(b * mx, chw)
+    X_zeroed = X_b_chw * mask_inv
+    
+    X_bmx_chw = X_zeroed.unsqueeze(1).repeat_interleave(mx, 1).reshape(b * mx, chw)
     A_zeroed = (A.transpose(0, 2) * mask_inv).transpose(0, 2)
     M_zeroed = (M.transpose(0, 1) * mask_inv).transpose(0, 1)
     D_trans = D.transpose(0, 1)
@@ -455,9 +461,9 @@ def nll_masked_batch_loss_components(
     l_s = a_s_d_inv.bmm(a_s_t)
     l_s = l_s + torch.diag_embed(torch.ones_like(l_s[:, :, 0]))
     # equations (4) and (6) from https://papers.nips.cc/paper/7826-on-gans-and-gmms.pdf
-    covs_inv_woodbury = torch.diag_embed(d_s_inv) - a_s_d_inv.transpose(1, 2).bmm(l_s.inverse()).bmm(
-        a_s_d_inv)  # M.data(?)[:, range(100), range(100)] = d_inv (wektory, nie macierze diagonalne) - M[:, range(100), range(100)]
-
+    l_s_inv = l_s.inverse()
+    
+    covs_inv_woodbury = torch.diag_embed(d_s_inv) - a_s_d_inv.transpose(1, 2).bmm(l_s_inv).bmm(a_s_d_inv)  
     log_dets_lemma = l_s.logdet() + (d_s + (d_s == 0)).log().sum(dim=1)
     log_noms = x_minus_means.bmm(covs_inv_woodbury).bmm(x_minus_means.transpose(1, 2)).reshape(-1)
     log_2_pi_res = log_2pi * (d_s != 0).sum(dim=1)

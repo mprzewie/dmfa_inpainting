@@ -102,21 +102,22 @@ def down_up_backbone(
         chw: Tuple[int, int, int],
         depth: int,
         first_channels: int = 16,
-        last_channels: int = 1
+        last_channels: int = 1,
+        kernel_size: int =3
 ) -> nn.Module:
     c, h, w = chw
     down = [
-        conv_relu_bn(c, first_channels),
+        conv_relu_bn(c, first_channels, kernel_size=kernel_size),
         nn.Conv2d(first_channels, first_channels, kernel_size=3, padding=1, stride=2)
     ]
 
     up = [
         nn.ConvTranspose2d(last_channels, last_channels, kernel_size=3, padding=1, stride=2, output_padding=1),
-        conv_relu_bn(last_channels, last_channels)
+        conv_relu_bn(last_channels, last_channels, kernel_size=kernel_size)
     ]
     for i in range(1, depth):
         down = down + [
-            conv_relu_bn(first_channels * (2 ** (i - 1)), first_channels * (2 ** i)),
+            conv_relu_bn(first_channels * (2 ** (i - 1)), first_channels * (2 ** i), kernel_size=kernel_size),
             nn.Conv2d(first_channels * (2 ** i), first_channels * (2 ** i), kernel_size=3, padding=1, stride=2)
         ]
 
@@ -124,7 +125,7 @@ def down_up_backbone(
 
                  nn.ConvTranspose2d(last_channels * (2 ** i), last_channels * (2 ** i), kernel_size=3, padding=1,
                                     stride=2, output_padding=1),
-                 conv_relu_bn(last_channels * (2 ** i), last_channels * (2 ** (i - 1)))
+                 conv_relu_bn(last_channels * (2 ** i), last_channels * (2 ** (i - 1)), kernel_size=kernel_size)
 
              ] + up
 
@@ -144,3 +145,26 @@ def down_up_backbone(
     ] + up
     return nn.Sequential(*modules)
 
+
+def simple_backbone(last_channels: int):
+    return nn.Sequential(
+            nn.Conv2d(2, 16, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(16, 32, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(64, last_channels, kernel_size=3, padding=1),
+            nn.ReLU(),
+#             Reshape((-1, hidden_size))
+        )

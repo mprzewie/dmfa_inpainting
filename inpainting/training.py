@@ -10,6 +10,8 @@ from inpainting.datasets.mask_coding import KNOWN
 from inpainting.inpainters.inpainter import InpainterModule
 from inpainting.losses import InpainterLossFn
 from torch.cuda import memory_summary
+from time import time
+from torch.optim.lr_scheduler import _LRScheduler
 
 def num_tensors():
     import torch
@@ -30,9 +32,9 @@ def train_step(
     j: torch.Tensor, 
     inpainter: InpainterModule,
     loss_fn: InpainterLossFn,
-    optimizer: Optimizer
+    optimizer: Optimizer,
+    scheduler: Optional[_LRScheduler] = None,
 ):
-    from time import time
     j_unknown = j * (j == KNOWN)
     x_masked = x * j_unknown
     inpainter.zero_grad()
@@ -45,12 +47,13 @@ def train_step(
     t3 = time()
     optimizer.step()
     t4 = time()
-    #             print({
-#                 "forward pass": t1 - s,
-#                 "loss calc" : t2 - t1,
-#                 "backward" : t3 - t2,
-#                 "opt step" : t4 - t3,                
-#             })
+    if scheduler is not None:
+        scheduler.step()
+    
+#     print([
+#         t1 -s, t2 - t1, t3 - t2, t4 - t3
+#     ])
+
 
 
 def train_inpainter(
@@ -65,6 +68,7 @@ def train_inpainter(
     tqdm_loader: bool = False,
     history_start: Optional[List] = None,
     max_benchmark_batches: int = 50,
+    scheduler: Optional[_LRScheduler] = None,
 ) -> List:
     inpainter.train()
     print({
@@ -96,8 +100,7 @@ def train_inpainter(
 
         for ((x,j), y) in data_loader_train:
             x, j = [t.to(device) for t in [x,j,]]
-            train_step(x, j, inpainter, loss_fn, optimizer)
-            break
+            train_step(x, j, inpainter, loss_fn, optimizer, scheduler)
 
 
         history_elem = eval_inpainter(

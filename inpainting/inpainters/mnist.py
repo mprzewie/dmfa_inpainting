@@ -70,11 +70,14 @@ class MNISTLinearInpainter(
 class MNISTConvolutionalInpainter(
     InpainterModule
 ):
-    def __init__(self, n_mixes: int = 1, last_channels: int = 128, a_width: int = 3, a_amplitude: float = 2):
-        super().__init__()
+    def __init__(
+        self, n_mixes: int = 1, last_channels: int = 128, a_width: int = 3, a_amplitude: float = 2,
+        h_w: Tuple[int, int] = (28, 28)
 
-        h = 28
-        w = 28
+    ):
+        super().__init__()
+        h,w = h_w
+
         c = 1
         in_size = c * h * w
         hidden_size = h * w * last_channels
@@ -159,23 +162,32 @@ class MNISTFullyConvolutionalInpainter(
         self.extractor = extractor
 
         self.a_extractor = nn.Sequential(
-            nn.Conv2d(last_channels, last_channels, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.Conv2d(last_channels, last_channels, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.Conv2d(last_channels, n_mixes * a_width * c, kernel_size=3, padding=1),
+            nn.Conv2d(last_channels, last_channels // 2, kernel_size=5, padding=2),
+            nn.BatchNorm2d(last_channels // 2),
+#             nn.ReLU(),
+#             nn.Conv2d(last_channels // 2, last_channels // 4, kernel_size=5, padding=2),
+#             nn.BatchNorm2d(last_channels // 4),
+#             nn.ReLU(),
+#             nn.Conv2d(last_channels // 4, last_channels // 8, kernel_size=5, padding=2),
+#             nn.BatchNorm2d(last_channels // 8),
+#             nn.ReLU(),
+            nn.Conv2d(last_channels // 2, n_mixes * a_width * c, kernel_size=3, padding=1),
             Reshape((-1, n_mixes, a_width, in_size,)),
             LambdaLayer(self.postprocess_a)
         )
         self.m_extractor = nn.Sequential(
-            nn.Conv2d(last_channels, last_channels // 2, kernel_size=5, padding=2),
+            nn.Conv2d(last_channels, last_channels // 2, kernel_size=3, padding=1),
+            nn.BatchNorm2d(last_channels // 2),
             nn.ReLU(),
-            nn.Conv2d(last_channels // 2, last_channels // 4, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.Conv2d(last_channels // 4, last_channels // 8, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.Conv2d(last_channels // 8, n_mixes * c, kernel_size=3, padding=1),
+#             nn.Conv2d(last_channels // 2, last_channels // 4, kernel_size=3, padding=1),
+#             nn.BatchNorm2d(last_channels // 4),
+#             nn.ReLU(),
+#             nn.Conv2d(last_channels // 4, last_channels // 8, kernel_size=3, padding=1),
+#             nn.BatchNorm2d(last_channels // 8),
+#             nn.ReLU(),
+            nn.Conv2d(last_channels // 2, n_mixes * c, kernel_size=3, padding=1),
             Reshape((-1, n_mixes, in_size)),
+#             nn.Sigmoid(),
 
         )
 
@@ -192,7 +204,7 @@ class MNISTFullyConvolutionalInpainter(
         )
 
     def postprocess_d(self, d_tensor: torch.Tensor):
-        return torch.sigmoid(d_tensor) + 1e-10
+        return torch.sigmoid(d_tensor) + 1e-6
 
     def postprocess_a(self, a_tensor: torch.Tensor):
         return self.a_amplitude * torch.sigmoid(a_tensor) - (self.a_amplitude / 2)
