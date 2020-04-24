@@ -13,6 +13,8 @@ from torch.cuda import memory_summary
 from time import time
 from torch.optim.lr_scheduler import _LRScheduler
 
+import matplotlib.pyplot as plt
+
 def num_tensors():
     import torch
     import gc
@@ -24,7 +26,6 @@ def num_tensors():
 #                 print(type(obj), (obj.shape if torch.is_tensor(obj) else obj.data.shape))
         except:
             pass
-    print("----")
     return res
 
 def train_step(
@@ -33,7 +34,6 @@ def train_step(
     inpainter: InpainterModule,
     loss_fn: InpainterLossFn,
     optimizer: Optimizer,
-    scheduler: Optional[_LRScheduler] = None,
 ):
     j_unknown = j * (j == KNOWN)
     x_masked = x * j_unknown
@@ -47,8 +47,7 @@ def train_step(
     t3 = time()
     optimizer.step()
     t4 = time()
-    if scheduler is not None:
-        scheduler.step()
+    return loss
     
 #     print([
 #         t1 -s, t2 - t1, t3 - t2, t4 - t3
@@ -81,8 +80,12 @@ def train_inpainter(
     losses_to_log["objective"] = loss_fn
     
     inpainter = inpainter.to(device)
-
-    history = history_start if history_start is not None else [eval_inpainter(
+    
+    if tqdm_loader:
+        data_loader_train = tqdm(data_loader_train)
+        data_loader_val = tqdm(data_loader_val)
+    
+    history = history_start if history_start not in [None, []] else [eval_inpainter(
             inpainter,
             epoch=0,
             data_loaders={"train": data_loader_train, "val": data_loader_val},
@@ -90,18 +93,31 @@ def train_inpainter(
             losses_to_log=losses_to_log,
             max_benchmark_batches=max_benchmark_batches
         )]
-
+    
+    
     for e in tqdm(range(n_epochs)):
-#         print("num_tensors", num_tensors())
-
-        if tqdm_loader:
-            data_loader_train = tqdm(data_loader_train)
         inpainter.train()
+        
+        epoch_losses = []
+        with torch.autograd.detect_anomaly():
+            try:
+                for ((x,j), y) in data_loader_train:
+                    s = time()
+                    x, j = [t.to(device) for t in [x,j,]]
+                    train_loss = train_step(x, j, inpainter, loss_fn, optimizer)
 
-        for ((x,j), y) in data_loader_train:
-            x, j = [t.to(device) for t in [x,j,]]
-            train_step(x, j, inpainter, loss_fn, optimizer, scheduler)
-
+                    epoch_losses.append(train_loss.item())
+                    if torch.isnan(train_loss):
+                        raise ValueError("NaN loss!")
+            except Exception as e:
+                print(e)
+                print(epoch_losses)
+                plt.plot(list(range(len(epoch_losses))), epoch_losses)
+                return history
+    #             print(time() - s)
+        
+        if scheduler is not None:
+            scheduler.step()
 
         history_elem = eval_inpainter(
             inpainter,
@@ -131,17 +147,23 @@ def eval_inpainter(
         for i, ((x, j), y) in enumerate(dl):
             if i > max_benchmark_batches:
                 break
+            s = time()
             x, j, y = [t.to(device) for t in [x, j, y]]
+            t0= time()
             p, m, a, d = inpainter(x, j)
+            t1 = time()
             losses.append({
                 loss_name: l(x, j, p, m, a, d).detach().cpu().numpy()
                 for loss_name, l in losses_to_log.items()
             })
+            t2 = time()
             if i == 0:
                 x, j, p, m, a, d, y = [t.detach().cpu().numpy() for t in [x, j, p, m, a, d, y]]
                 sample_results[fold] = (
                     x, j, p, m, a, d, y
                 )
+            t3 = time()
+#             print(t0 - s, t1 - t0, t2 - t1, t3 - t2, t3 - s)
 
         fold_losses[fold] = losses
     

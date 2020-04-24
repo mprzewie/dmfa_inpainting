@@ -18,7 +18,6 @@ InpainterLossFn = Callable[[
                            torch.Tensor
 ]
 
-
 def nll_masked_batch_loss(
         X: torch.Tensor,
         J: torch.Tensor,
@@ -26,6 +25,7 @@ def nll_masked_batch_loss(
         M: torch.Tensor,
         A: torch.Tensor,
         D: torch.Tensor,
+        l_epsilon: float =1e-15,
 ):
     """A loss which allows for masks of varying size"""
 
@@ -39,18 +39,44 @@ def nll_masked_batch_loss(
 
     a_s_d_inv = a_s * d_s_inv_rep
     l_s = a_s_d_inv.bmm(a_s_t)
-    l_s = l_s + torch.diag_embed(torch.ones_like(l_s[:, :, 0]))
+    l_s = l_s + torch.diag_embed(
+        torch.ones_like(l_s[:, :, 0]) + l_epsilon
+    )
     # equations (4) and (6) from https://papers.nips.cc/paper/7826-on-gans-and-gmms.pdf
-    covs_inv_woodbury = torch.diag_embed(d_s_inv) - a_s_d_inv.transpose(1, 2).bmm(l_s.inverse()).bmm(
-        a_s_d_inv)  # M.data(?)[:, range(100), range(100)] = d_inv (wektory, nie macierze diagonalne) - M[:, range(100), range(100)]
+    l_s_d = l_s.double()
+    
+    l_s_inv = l_s_d.inverse().float() 
+    
+    covs_inv_woodbury = torch.diag_embed(d_s_inv) - a_s_d_inv.transpose(1, 2).bmm(l_s_inv).bmm(a_s_d_inv)  
+    # M.data(?)[:, range(100), range(100)] = d_inv (wektory, nie macierze diagonalne) - M[:, range(100), range(100)]
 
-    log_dets_lemma = l_s.logdet() + (d_s + (d_s == 0)).log().sum(dim=1)
+    log_dets_lemma = l_s_d.logdet().float() + (d_s + (d_s == 0)).log().sum(dim=1)
     # a hack: I add 1 where d_s == 0 so that d_s.log() is zero where d_s == 0
     log_noms = x_minus_means.bmm(covs_inv_woodbury).bmm(x_minus_means.transpose(1, 2)).reshape(-1)
     losses = p_s * (1 / 2) * (log_noms + log_dets_lemma + log_2pi * (d_s != 0).sum(dim=1))
     
 #     print([t.sum().item() for t in [p_s, log_noms, log_dets_lemma, l_s.logdet(), l_s.log(), l_s.det()]])
 #     print("----")
+    comps = {
+        "log_noms": log_noms, #.sum(),
+        "log_dets_lemma": log_dets_lemma, #.sum(),
+        "d": (d_s != 0), #.sum(),
+        "l_s.logdet": l_s.logdet(),
+        "l_s.det": l_s.det(),
+    }
+    
+    if any([torch.isnan(t.sum()) for t in comps.values()]):
+        print(comps)
+        
+        import matplotlib.pyplot as plt
+        
+        X_nan = X[torch.isnan(l_s.logdet())]
+        
+        fig, ax = plt.subplots(ncols=len(X_nan) + 1)
+        for i, x in enumerate(X_nan):
+            ax[i].imshow(x.cpu().numpy(), cmap="gray")
+        plt.show()
+        
     return losses.sum() / X.shape[0]
 
 
