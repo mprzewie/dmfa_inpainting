@@ -12,12 +12,14 @@ class RandomRectangleMaskConfig:
     height_ampl: int = 0
     width_ampl: int = 0
 
-    def generate_on_mask(self, mask: np.ndarray, copy: bool = True) -> np.ndarray:
+    def generate_on_mask(self, mask: np.ndarray, copy: bool = True, seed: int = None) -> np.ndarray:
         """
         Args:
             mask: [h, w]
             copy:
         """
+        if seed is not None:
+            np.random.seed(seed)
         mask = mask.copy() if copy else mask
         m_height = self.height + np.random.randint(-self.height_ampl, self.height_ampl + 1)
         m_width = self.width + np.random.randint(-self.width_ampl, self.width_ampl + 1)

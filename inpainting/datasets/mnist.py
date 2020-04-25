@@ -21,11 +21,14 @@ DEFAULT_MASK_CONFIGS = (
 )
 
 
-def random_mask_fn(mask_configs: Sequence[RandomRectangleMaskConfig]):
+def random_mask_fn(mask_configs: Sequence[RandomRectangleMaskConfig], deterministic: bool=True):
     def tensor_to_tensor_with_random_mask(image_tensor: torch.Tensor):
         mask = np.ones_like(image_tensor.numpy())
         for mc in mask_configs:
-            mask = mc.generate_on_mask(mask)
+            mask = mc.generate_on_mask(
+                mask, 
+                seed=mc.value + int((image_tensor * 255).sum().item()) if deterministic else None,
+            )
         return image_tensor, torch.tensor(mask).float()
 
     return tensor_to_tensor_with_random_mask
@@ -35,12 +38,13 @@ def train_val_datasets(
         save_path: Path,
         mask_configs: Sequence[RandomRectangleMaskConfig] = DEFAULT_MASK_CONFIGS,
         ds_type:  MNIST = MNIST,
-        resize_size: Tuple[int,int] =(28,28)
+        resize_size: Tuple[int,int] =(28,28),
+        deterministic: bool=True
 ) -> Tuple[MNIST, MNIST]:
     train_transform = tr.Compose([
         tr.Resize(resize_size),
         tr.ToTensor(),
-        tr.Lambda(random_mask_fn(mask_configs=mask_configs))
+        tr.Lambda(random_mask_fn(mask_configs=mask_configs, deterministic=deterministic))
     ])
 
     val_transform = tr.Compose([
@@ -49,7 +53,8 @@ def train_val_datasets(
         tr.Lambda(random_mask_fn(
             mask_configs=[
                 m for m in mask_configs if m.value==UNKNOWN_LOSS or m.value == KNOWN
-            ] # only the mask which will be inpainted
+            ], # only the mask which will be inpainted
+            deterministic=deterministic
         ))
     ])
 

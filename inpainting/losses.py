@@ -28,7 +28,12 @@ def nll_masked_batch_loss(
         D: torch.Tensor,
 ):
     """A loss which allows for masks of varying size"""
-
+    
+    X, J, P, M, A, D = [
+        t.double() for t in [
+            X, J, P, M, A, D
+        ]
+    ]
     x_s, p_s, m_s, a_s, d_s, d_s_inv = zero_batch_at_mask_indices(X, J, P, M, A, D)
     
 
@@ -51,7 +56,8 @@ def nll_masked_batch_loss(
     
 #     print([t.sum().item() for t in [p_s, log_noms, log_dets_lemma, l_s.logdet(), l_s.log(), l_s.det()]])
 #     print("----")
-    return losses.sum() / X.shape[0]
+    result = losses.sum() / X.shape[0]
+    return result.float()
 
 
 def zero_batch_at_mask_indices(
