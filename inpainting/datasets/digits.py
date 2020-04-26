@@ -41,27 +41,22 @@ class DigitsDataset(Dataset):
 
 
 DEFAULT_MASK_CONFIGS = (
-    RandomRectangleMaskConfig(
-        UNKNOWN_LOSS,
-        3, 3, 2, 2
-    ),
-    RandomRectangleMaskConfig(
-        UNKNOWN_NO_LOSS,
-        3, 3, 2, 2
-    )
+    RandomRectangleMaskConfig(UNKNOWN_LOSS, 3, 3),  # 2, 2
+    RandomRectangleMaskConfig(UNKNOWN_NO_LOSS, 3, 3),  # 2, 2
 )
 
 
 def train_val_datasets(
-        mask_configs: Sequence[RandomRectangleMaskConfig] = DEFAULT_MASK_CONFIGS,
-        random_state: int = 42
+    mask_configs: Sequence[RandomRectangleMaskConfig] = DEFAULT_MASK_CONFIGS,
+    random_state: int = 42,
 ) -> Tuple[Dataset, Dataset]:
     digits = datasets.load_digits()
-    X = digits['data']
-    y = digits['target']
+    X = digits["data"]
+    y = digits["target"]
     J = []
+
     for i in range(X.shape[0]):
-        mask = np.ones((8, 8))
+        mask = np.ones((1, 8, 8))
         for mc in mask_configs:
             mask = mc.generate_on_mask(mask)
         J.append(mask.reshape(-1))
@@ -71,7 +66,9 @@ def train_val_datasets(
 
     X = X.reshape(-1, 1, 8, 8)
     J = J.reshape(-1, 1, 8, 8)
-    X_train, X_val, J_train, J_val, y_train, y_val = train_test_split(X, J, y, test_size=0.33, random_state=random_state)
+    X_train, X_val, J_train, J_val, y_train, y_val = train_test_split(
+        X, J, y, test_size=0.33, random_state=random_state
+    )
 
     ds_train = DigitsDataset(X_train, J_train, y_train)
     ds_val = DigitsDataset(X_val, J_val, y_val)
