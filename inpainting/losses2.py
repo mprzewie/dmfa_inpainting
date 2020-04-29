@@ -46,104 +46,99 @@ def mse(x_s, p_s, m_s, a_s, d_s, d_s_inv):
     return ((x_s - m_s) ** 2).sum()
 
 
-def buffered_gathering_fn(msk: int):
-    def gather_batch_by_mask_indices(
-        X: torch.Tensor,
-        J: torch.Tensor,
-        P: torch.Tensor,
-        M: torch.Tensor,
-        A: torch.Tensor,
-        D: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        """
-        Args:
-            X: [b, c, h, w]
-            J: [b, c, h, w]
-            P: [b, mx]
-            M: [b, mx, c*h*w]
-            A: [b, mx, l, c*h*w]
-            D: [b, mx, c*h*w]
+def buffered_gather_batch_by_mask_indices(
+    X: torch.Tensor,
+    J: torch.Tensor,
+    P: torch.Tensor,
+    M: torch.Tensor,
+    A: torch.Tensor,
+    D: torch.Tensor,
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Args:
+        X: [b, c, h, w]
+        J: [b, c, h, w]
+        P: [b, mx]
+        M: [b, mx, c*h*w]
+        A: [b, mx, l, c*h*w]
+        D: [b, mx, c*h*w]
 
-        Returns:
-            X: [b * mx, msk]
-            P: [b * mx, msk]
-            M: [b * mx, msk]
-            A: [b * mx, l, msk]
-            D: [b * mx, msk]
-            D_inv: [b * mx, msk]
-            msk - size of the mask
-        """
-        s = time()
-        b = X.shape[0]
-        chw = torch.tensor(X.shape[1:]).prod()
-        mx = M.shape[1]
-        X_b_chw = X.reshape(b, chw)
-        J_b_chw = J.reshape(b, chw)
-        l = A.shape[2]
-        J_b_chw_msk = J_b_chw == UNKNOWN_LOSS
-        mask_sizes = J_b_chw_msk.sum(dim=1)
-        fake_masks_sizes = msk - mask_sizes
-        non_masks_inds_b, non_masks_inds_chw = (J_b_chw_msk == 0).nonzero(as_tuple=True)
+    Returns:
+        X: [b * mx, msk]
+        P: [b * mx, msk]
+        M: [b * mx, msk]
+        A: [b * mx, l, msk]
+        D: [b * mx, msk]
+        D_inv: [b * mx, msk]
+        msk - size of the mask
+    """
+    s = time()
+    b = X.shape[0]
+    chw = torch.tensor(X.shape[1:]).prod()
+    mx = M.shape[1]
+    X_b_chw = X.reshape(b, chw)
+    J_b_chw = J.reshape(b, chw)
+    l = A.shape[2]
+    J_b_chw_msk = J_b_chw == UNKNOWN_LOSS
+    mask_sizes = J_b_chw_msk.sum(dim=1)
+    msk = mask_sizes.max()
+    fake_masks_sizes = msk - mask_sizes
+    non_masks_inds_b, non_masks_inds_chw = (J_b_chw_msk == 0).nonzero(as_tuple=True)
 
-        fillups = [
-            torch.stack(
-                [
-                    non_masks_inds_b[non_masks_inds_b == i][:fms],
-                    non_masks_inds_chw[non_masks_inds_b == i][:fms],
-                ]
-            ).T
-            for i, fms in enumerate(fake_masks_sizes)
-        ]
+    fillups = [
+        torch.stack(
+            [
+                non_masks_inds_b[non_masks_inds_b == i][:fms],
+                non_masks_inds_chw[non_masks_inds_b == i][:fms],
+            ]
+        ).T
+        for i, fms in enumerate(fake_masks_sizes)
+    ]
 
-        fillups = torch.cat(fillups)
-        J_b_chw_msk[fillups[:, 0], fillups[:, 1]] = UNKNOWN_NO_LOSS
+    fillups = torch.cat(fillups)
+    J_b_chw_msk[fillups[:, 0], fillups[:, 1]] = UNKNOWN_NO_LOSS
 
-        mask_inds_b, mask_inds_chw = (J_b_chw_msk).nonzero(as_tuple=True)
+    mask_inds_b, mask_inds_chw = (J_b_chw_msk).nonzero(as_tuple=True)
 
-        J_b_msk = J_b_chw[mask_inds_b, mask_inds_chw] == UNKNOWN_LOSS
+    J_b_msk = J_b_chw[mask_inds_b, mask_inds_chw] == UNKNOWN_LOSS
 
-        X_b_msk = X_b_chw[mask_inds_b, mask_inds_chw].reshape(b, msk)
-        X_bmx_msk = X_b_msk.unsqueeze(1).repeat_interleave(mx, 1).reshape(b * mx, msk)
+    X_b_msk = X_b_chw[mask_inds_b, mask_inds_chw].reshape(b, msk)
+    X_bmx_msk = X_b_msk.unsqueeze(1).repeat_interleave(mx, 1).reshape(b * mx, msk)
 
-        A_bmx_l_msk = (
+    A_bmx_l_msk = (
+        (
             (
-                (
-                    A.transpose(1, 3)[mask_inds_b, mask_inds_chw].transpose(0, 2)
-                    * J_b_msk
-                ).transpose(0, 2)
-            )
-            .reshape(b, msk, l, mx)
-            .transpose(1, 3)
-            .reshape(b * mx, l, msk)
+                A.transpose(1, 3)[mask_inds_b, mask_inds_chw].transpose(0, 2) * J_b_msk
+            ).transpose(0, 2)
         )
+        .reshape(b, msk, l, mx)
+        .transpose(1, 3)
+        .reshape(b * mx, l, msk)
+    )
 
-        M_bmx_msk = (
+    M_bmx_msk = (
+        (
             (
-                (
-                    M.transpose(1, 2)[mask_inds_b, mask_inds_chw].transpose(0, 1)
-                    * J_b_msk
-                ).transpose(0, 1)
-            )
-            .reshape(b, msk, mx)
-            .transpose(1, 2)
-            .reshape(b * mx, msk)
+                M.transpose(1, 2)[mask_inds_b, mask_inds_chw].transpose(0, 1) * J_b_msk
+            ).transpose(0, 1)
         )
-        D_bmx_msk = (
+        .reshape(b, msk, mx)
+        .transpose(1, 2)
+        .reshape(b * mx, msk)
+    )
+    D_bmx_msk = (
+        (
             (
-                (
-                    D.transpose(1, 2)[mask_inds_b, mask_inds_chw].transpose(0, 1)
-                    * J_b_msk
-                ).transpose(0, 1)
-            )
-            .reshape(b, msk, mx)
-            .transpose(1, 2)
-            .reshape(b * mx, msk)
+                D.transpose(1, 2)[mask_inds_b, mask_inds_chw].transpose(0, 1) * J_b_msk
+            ).transpose(0, 1)
         )
-        P_bmx = P.reshape(b * mx)
+        .reshape(b, msk, mx)
+        .transpose(1, 2)
+        .reshape(b * mx, msk)
+    )
+    P_bmx = P.reshape(b * mx)
 
-        return X_bmx_msk, P_bmx, M_bmx_msk, A_bmx_l_msk, D_bmx_msk
-
-    return gather_batch_by_mask_indices
+    return X_bmx_msk, P_bmx, M_bmx_msk, A_bmx_l_msk, D_bmx_msk
 
 
 def loss_factory(
@@ -168,6 +163,4 @@ def loss_factory(
 
 nll_zero = loss_factory(zero_batch_at_mask_indices, nll_calc_woodbury)
 nll_gather = loss_factory(gather_batch_by_mask_indices, nll_calc_woodbury)
-nll_buffered = lambda buffer_size: loss_factory(
-    gathering_fn=buffered_gathering_fn(buffer_size)
-)
+nll_buffered = loss_factory(gathering_fn=buffered_gather_batch_by_mask_indices)
