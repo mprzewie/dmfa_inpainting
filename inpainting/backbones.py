@@ -103,7 +103,8 @@ def down_up_backbone(
         depth: int,
         first_channels: int = 16,
         last_channels: int = 1,
-        kernel_size: int =3
+        kernel_size: int =3,
+        latent: bool = True
 ) -> nn.Module:
     c, h, w = chw
     down = [
@@ -133,7 +134,8 @@ def down_up_backbone(
     w_d = w // (2 ** depth)
     c_d_i = first_channels * (2 ** (depth - 1))
     c_d_o = last_channels * (2 ** (depth-1))
-    modules = down + [
+    
+    latent_modules =  [
         Reshape((-1, c_d_i * h_d * w_d)),
         nn.ReLU(),
         nn.Linear(
@@ -142,7 +144,9 @@ def down_up_backbone(
         ),
         nn.ReLU(),
         Reshape((-1, c_d_o, h_d, w_d)),
-    ] + up
+    ] if latent else []
+    
+    modules = down + latent_modules + up
     return nn.Sequential(*modules)
 
 

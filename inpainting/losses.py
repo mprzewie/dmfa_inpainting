@@ -480,7 +480,9 @@ def nll_masked_batch_loss_components(
 ) -> Dict[str, torch.Tensor]:
     """A loss which allows for masks of varying size"""
 
-    x_s, p_s, m_s, a_s, d_s, d_s_inv = zero_batch_at_mask_indices(X, J, P, M, A, D)
+    x_s, p_s, m_s, a_s, d_s = zero_batch_at_mask_indices(X, J, P, M, A, D)
+    
+    d_s_inv = (1 / (d_s + (d_s == 0))) * (d_s != 0)
 
     x_minus_means = (x_s - m_s).unsqueeze(1)  # ?
 

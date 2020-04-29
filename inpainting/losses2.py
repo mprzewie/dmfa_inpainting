@@ -42,7 +42,7 @@ def nll_calc_woodbury(x_s, p_s, m_s, a_s, d_s):
     return losses.sum()
 
 
-def mse(x_s, p_s, m_s, a_s, d_s, d_s_inv):
+def mse(x_s, p_s, m_s, a_s, d_s):
     return ((x_s - m_s) ** 2).sum()
 
 
