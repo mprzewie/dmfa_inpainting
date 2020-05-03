@@ -56,7 +56,7 @@ class FullyConvolutionalInpainter(InpainterModule):
         )
 
     def postprocess_d(self, d_tensor: torch.Tensor):
-        return torch.sigmoid(d_tensor) + 1e-6
+        return torch.sigmoid(d_tensor) + 1e-10
 
     def postprocess_a(self, a_tensor: torch.Tensor):
         return self.a_amplitude * torch.sigmoid(a_tensor) - (self.a_amplitude / 2)

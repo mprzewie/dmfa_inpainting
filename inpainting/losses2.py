@@ -15,6 +15,8 @@ from inpainting.losses import (
 
 
 def nll_calc_woodbury(x_s, p_s, m_s, a_s, d_s):
+    
+    x_s, p_s, m_s, a_s, d_s = [t.double() for t in [x_s, p_s, m_s, a_s, d_s]]
     d_s_inv = (1 / (d_s + (d_s == 0))) * (d_s != 0)
     x_minus_means = (x_s - m_s).unsqueeze(1)
     d_s_inv_rep = d_s_inv.unsqueeze(-2).repeat_interleave(dim=-2, repeats=a_s.shape[-2])
@@ -39,7 +41,7 @@ def nll_calc_woodbury(x_s, p_s, m_s, a_s, d_s):
     losses = (
         p_s * (1 / 2) * (log_noms + log_dets_lemma + log_2pi * (d_s != 0).sum(dim=1))
     )
-    return losses.sum()
+    return losses.float().sum()
 
 
 def mse(x_s, p_s, m_s, a_s, d_s):
@@ -81,7 +83,7 @@ def buffered_gather_batch_by_mask_indices(
     l = A.shape[2]
     J_b_chw_msk = J_b_chw == UNKNOWN_LOSS
     mask_sizes = J_b_chw_msk.sum(dim=1)
-    msk = mask_sizes.max()
+    msk = mask_sizes.max().item()
     fake_masks_sizes = msk - mask_sizes
     non_masks_inds_b, non_masks_inds_chw = (J_b_chw_msk == 0).nonzero(as_tuple=True)
 

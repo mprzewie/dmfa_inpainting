@@ -54,7 +54,7 @@ def train_step(
     t4 = time()
     if scheduler is not None:
         scheduler.step()
-
+    return loss.item()
 
 #     print([
 #         t1 -s, t2 - t1, t3 - t2, t4 - t3
@@ -87,7 +87,11 @@ def train_inpainter(
     losses_to_log["objective"] = loss_fn
 
     inpainter = inpainter.to(device)
-
+    
+    if tqdm_loader:
+        data_loader_train = tqdm(data_loader_train)
+        data_loader_val = tqdm(data_loader_val)
+        
     history = (
         history_start
         if history_start is not None
@@ -106,14 +110,15 @@ def train_inpainter(
     for e in tqdm(range(n_epochs)):
         #         print("num_tensors", num_tensors())
 
-        if tqdm_loader:
-            data_loader_train = tqdm(data_loader_train)
+        
         inpainter.train()
 
         for ((x, j), y) in data_loader_train:
             x, j = [t.to(device) for t in [x, j]]
-            train_step(x, j, inpainter, loss_fn, optimizer, scheduler)
-
+            loss = train_step(x, j, inpainter, loss_fn, optimizer, scheduler)
+            if np.isnan(loss):
+                print(f"stoping at epoch {e} bc loss is nan")
+                return history
         history_elem = eval_inpainter(
             inpainter,
             epoch=e,
