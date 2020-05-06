@@ -15,7 +15,6 @@ from inpainting.losses import (
 
 
 def nll_calc_woodbury(x_s, p_s, m_s, a_s, d_s):
-    
     x_s, p_s, m_s, a_s, d_s = [t.double() for t in [x_s, p_s, m_s, a_s, d_s]]
     d_s_inv = (1 / (d_s + (d_s == 0))) * (d_s != 0)
     x_minus_means = (x_s - m_s).unsqueeze(1)
@@ -74,7 +73,6 @@ def buffered_gather_batch_by_mask_indices(
         D_inv: [b * mx, msk]
         msk - size of the mask
     """
-    s = time()
     b = X.shape[0]
     chw = torch.tensor(X.shape[1:]).prod()
     mx = M.shape[1]
