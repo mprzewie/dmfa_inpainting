@@ -101,6 +101,7 @@ def conv_relu_bn(in_channels: int, out_channels: int, kernel_size: int = 3) -> n
 def down_up_backbone(
         chw: Tuple[int, int, int],
         depth: int,
+        block_length: int = 1,
         first_channels: int = 16,
         last_channels: int = 1,
         kernel_size: int =3,
@@ -117,17 +118,30 @@ def down_up_backbone(
         conv_relu_bn(last_channels, last_channels, kernel_size=kernel_size)
     ]
     for i in range(1, depth):
+        for j in range(block_length):
+            down = down + [
+                conv_relu_bn(
+                    first_channels * (2 ** (i - 1)) if j == 0 else first_channels * (2 ** i), 
+                    first_channels * (2 ** i), 
+                    kernel_size=kernel_size
+                ),
+            ]
+            up = [
+                conv_relu_bn(
+                    last_channels * (2 ** i), 
+                    last_channels * (2 ** (i - 1)) if j == 0 else last_channels * (2 ** i)  , 
+                    kernel_size=kernel_size
+                )
+            ] + up
+            
         down = down + [
-            conv_relu_bn(first_channels * (2 ** (i - 1)), first_channels * (2 ** i), kernel_size=kernel_size),
             nn.Conv2d(first_channels * (2 ** i), first_channels * (2 ** i), kernel_size=3, padding=1, stride=2)
         ]
 
         up = [
-
-                 nn.ConvTranspose2d(last_channels * (2 ** i), last_channels * (2 ** i), kernel_size=3, padding=1,
-                                    stride=2, output_padding=1),
-                 conv_relu_bn(last_channels * (2 ** i), last_channels * (2 ** (i - 1)), kernel_size=kernel_size)
-
+                 nn.ConvTranspose2d(
+                     last_channels * (2 ** i), last_channels * (2 ** i), kernel_size=3, padding=1, stride=2, output_padding=1
+                 ),
              ] + up
 
     h_d = h // (2 ** depth)

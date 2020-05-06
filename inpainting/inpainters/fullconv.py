@@ -17,13 +17,14 @@ class FullyConvolutionalInpainter(InpainterModule):
         a_width: int = 3,
         a_amplitude: float = 2,
         c_h_w: Tuple[int, int, int] = (1, 28, 28),
+        m_offset: float = 0
     ):
         super().__init__()
         c, h, w = c_h_w
         in_size = c * h * w
         # hidden_size = h * w * last_channels
         self.a_amplitude = a_amplitude
-
+        self.m_offset = m_offset
         self.extractor = extractor
 
         self.a_extractor = nn.Sequential(
@@ -41,6 +42,7 @@ class FullyConvolutionalInpainter(InpainterModule):
             nn.ReLU(),
             nn.Conv2d(last_channels // 2, n_mixes * c, kernel_size=3, padding=1),
             Reshape((-1, n_mixes, in_size)),
+            LambdaLayer(self.postprocess_m)
         )
 
         self.d_extractor = nn.Sequential(
@@ -60,6 +62,9 @@ class FullyConvolutionalInpainter(InpainterModule):
 
     def postprocess_a(self, a_tensor: torch.Tensor):
         return self.a_amplitude * torch.sigmoid(a_tensor) - (self.a_amplitude / 2)
+    
+    def postprocess_m(self, m_tensor: torch.Tensor):
+        return m_tensor + self.m_offset
 
     def forward(self, X, J):
         J = J * (J == KNOWN)
