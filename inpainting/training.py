@@ -12,7 +12,8 @@ from inpainting.losses import InpainterLossFn
 from torch.cuda import memory_summary
 from time import time
 from torch.optim.lr_scheduler import _LRScheduler
-
+import pickle
+from pathlib import Path
 
 def num_tensors():
     import torch
@@ -71,10 +72,35 @@ def train_inpainter(
     losses_to_log: Dict[str, InpainterLossFn] = None,
     device: torch.device = torch.device("cpu"),
     tqdm_loader: bool = False,
-    history_start: Optional[List] = None,
     max_benchmark_batches: int = 50,
     scheduler: Optional[_LRScheduler] = None,
+    export_path: Optional[Path] = None,
+    export_freq: int = 5
 ) -> List:
+
+    print("training on device", device)
+    epoch = 0
+    history = []
+
+    if export_path is not None:
+        export_path.mkdir(parents=True, exist_ok=True)
+        state_path = export_path / "training.state"
+        if state_path.exists():
+            chckp = torch.load(state_path, map_location=device)
+            inpainter.load_state_dict(chckp["inpainter"])
+            optimizer.load_state_dict(chckp["optimizer"])
+            epoch = chckp["epoch"]
+        
+        histories_paths = (export_path / "histories").glob("*.pkl")
+        for hp in histories_paths:
+            with hp.open("rb") as f:
+                history.append(pickle.load(f))
+        history = sorted(history, key= lambda h: h["epoch"])
+        print("Loaded history from epochs", [h["epoch"] for h in history])
+                
+
+    print(f"starting training from epoch {epoch}")
+    
     inpainter.train()
     print(
         {
@@ -87,14 +113,12 @@ def train_inpainter(
     losses_to_log["objective"] = loss_fn
 
     inpainter = inpainter.to(device)
-    
     if tqdm_loader:
         data_loader_train = tqdm(data_loader_train)
         data_loader_val = tqdm(data_loader_val)
         
     history = (
-        history_start
-        if history_start is not None
+        history if len(history) > 0 
         else [
             eval_inpainter(
                 inpainter,
@@ -107,10 +131,7 @@ def train_inpainter(
         ]
     )
 
-    for e in tqdm(range(n_epochs)):
-        #         print("num_tensors", num_tensors())
-
-        
+    for e in tqdm(range(epoch, n_epochs + epoch)):        
         inpainter.train()
 
         for ((x, j), y) in data_loader_train:
@@ -128,6 +149,33 @@ def train_inpainter(
             max_benchmark_batches=max_benchmark_batches,
         )
         history.append(history_elem)
+
+        if export_path is not None and (
+            (e % export_freq) == 0 or 
+            e == (epoch + n_epochs - 1)
+            ):
+            histories_path = export_path / "histories"
+            histories_path.mkdir(exist_ok=True)
+            with (histories_path / f"{e}.pkl").open("wb") as f:
+                pickle.dump(history_elem, f)
+            
+            state_dict = {
+                "inpainter": inpainter.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "epoch": e,
+            }
+            
+            state_file = export_path / "training.state"
+
+            if state_path.exists():
+                state_path.unlink()
+
+            torch.save(
+                state_dict,
+                state_path
+            )
+            
+
 
     return history
 
@@ -164,8 +212,7 @@ def eval_inpainter(
 
         fold_losses[fold] = losses
 
-    #     for k, v in sample_results.items():
-    #         print([type(t) for t in v])
+
     return dict(
         epoch=epoch,
         losses={

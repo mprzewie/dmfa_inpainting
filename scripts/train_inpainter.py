@@ -2,11 +2,6 @@
 # coding: utf-8
 
 import sys
-
-from inpainting.inpainters.mnist import MNISTConvolutionalInpainter
-from inpainting.inpainters.rgb import RGBInpainter
-from inpainting.visualizations.stats import plot_arrays_stats
-
 sys.path.append("..")
 
 import numpy as np
@@ -21,11 +16,17 @@ from pathlib import Path
 import inpainting.visualizations.samples as vis
 import pickle
 
+from pprint import pprint
+import json
+from tqdm import tqdm
+from inpainting.inpainters.mnist import MNISTConvolutionalInpainter
+from inpainting.inpainters.rgb import RGBInpainter
+from inpainting.visualizations.stats import plot_arrays_stats
 from inpainting.datasets.celeba import train_val_datasets as celeba_train_val_ds
 from inpainting.datasets.mnist import train_val_datasets as mnist_train_val_ds
 from inpainting.datasets.mask_coding import UNKNOWN_LOSS
 from inpainting.datasets.utils import RandomRectangleMaskConfig
-from inpainting.visualizations.digits import rgb_with_mask
+from inpainting.visualizations.digits import img_with_mask
 from inpainting.training import train_inpainter
 from inpainting.utils import predictions_for_entire_loader
 from inpainting.inpainters.fullconv import FullyConvolutionalInpainter
@@ -36,18 +37,21 @@ import matplotlib
 
 matplotlib.rcParams["figure.facecolor"] = "white"
 
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
-parser = ArgumentParser()
+parser = ArgumentParser(
+    formatter_class=ArgumentDefaultsHelpFormatter
+
+)
 
 parser.add_argument("--device", type=str, default="cuda:0")
 
-parser.add_argument("--results_dir", type=Path, default=Path("../results"))
+parser.add_argument("--results_dir", type=str, default="../results")
 
 
 parser.add_argument("--experiment_name", type=str, required=True)
 
-parser.add_argument("--dataset_root", type=Path, default=Path.home() / "uj/.data/")
+parser.add_argument("--dataset_root", type=str, default=str(Path.home() / "uj/.data/"))
 
 parser.add_argument("--dataset", type=str, default="mnist", choices=["mnist", "celeba"])
 
@@ -81,7 +85,7 @@ parser.add_argument("--a_amplitude", type=float, default=0.5)
 
 parser.add_argument("--lr", type=float, default=4e-5)
 
-parser.add_argument("--num-epochs", type=int, default=20)
+parser.add_argument("--num_epochs", type=int, default=20)
 
 parser.add_argument("--max_benchmark_batches", type=int, default=200)
 
@@ -97,17 +101,30 @@ parser.add_argument(
 
 args = parser.parse_args()
 
+args_dict = vars(args)
+pprint(args_dict)
+
 device = torch.device(args.device if torch.cuda.is_available() else "cpu")
 
-experiment_path = args.results_dir / args.dataset / args.experiment_name
+experiment_path = Path(args.results_dir) / args.dataset / args.experiment_name
 experiment_path.mkdir(exist_ok=True, parents=True)
+
+print("Experiment path", experiment_path.absolute())
+
+with (experiment_path / "args.json").open("w") as f:
+    json.dump(
+        args_dict,
+        f,
+        indent=2,
+    )
+
 
 img_size = args.img_size
 hidden_mask_size = args.mask_size_hidden
 
 if args.dataset == "mnist":
     ds_train, ds_val = mnist_train_val_ds(
-        args.dataset_root,
+        Path(args.dataset_root),
         mask_configs=[
             RandomRectangleMaskConfig(UNKNOWN_LOSS, hidden_mask_size, hidden_mask_size)
         ],
@@ -117,7 +134,7 @@ elif args.dataset == "celeba":
     img_to_crop = 1.875
     full_img_size = int(img_size * img_to_crop)
     ds_train, ds_val = celeba_train_val_ds(
-        args.dataset_root,
+        Path(args.dataset_root),
         mask_configs=[
             RandomRectangleMaskConfig(UNKNOWN_LOSS, hidden_mask_size, hidden_mask_size)
         ],
@@ -131,16 +148,17 @@ fig, axes = plt.subplots(10, 10, figsize=(15, 15))
 for i in range(100):
     (x, j), y = ds_train[i]
     ax = axes[i // 10, i % 10]
-    rgb_with_mask(x.numpy(), j.numpy(), ax)
+    img_with_mask(x.numpy(), j.numpy(), ax)
 train_fig = plt.gcf()
 train_fig.savefig(experiment_path / "train.png")
+plt.clf()
 
 print("dataset sizes", len(ds_train), len(ds_val))
 
 
 batch_size = args.batch_size
 dl_train = DataLoader(ds_train, batch_size, shuffle=True)
-dl_val = DataLoader(ds_val, batch_size, shuffle=False)
+dl_val = DataLoader(ds_val, 16, shuffle=False)
 
 
 log_noms = lambda x, j, p, m, a, d: nll_masked_batch_loss_components(x, j, p, m, a, d)[
@@ -166,9 +184,8 @@ log_2_pi = lambda x, j, p, m, a, d: nll_masked_batch_loss_components(x, j, p, m,
 a_var = lambda x, j, p, m, a, d: a.var()
 
 
-history = []
 
-if args.architecture == "fulconv":
+if args.architecture == "fullconv":
     img_channels = 1 if args.dataset == "mnist" else 3
     inpainter = FullyConvolutionalInpainter(
         n_mixes=1,
@@ -209,17 +226,15 @@ elif args.architecture == "linear_heads":
 else:
     raise ValueError("can't initialize inpainter")
 
-opt = optim.Adam(inpainter.parameters(), lr=args.lr)
 
-ckp_path = experiment_path / "inpainter.state"
-
-if ckp_path.exists():
-    chckp = torch.load(ckp_path)
-    inpainter.load_state_dict(chckp())
 
 inpainter.train()
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+inpainter = inpainter.to(device)
+opt = optim.Adam(inpainter.parameters(), lr=args.lr)
+
 
 history = train_inpainter(
     inpainter,
@@ -236,12 +251,14 @@ history = train_inpainter(
         )
     ),
     tqdm_loader=True,
+    export_path=experiment_path,
+    export_freq=args.render_every
 )
 
 
-with (experiment_path / "history_last_epoch.pkl").open("wb") as f:
-    history_tmp = history
-    pickle.dump(history[-1], f)
+# with (experiment_path / "history_last_epoch.pkl").open("wb") as f:
+#     history_tmp = history
+#     pickle.dump(history[-1], f)
 
 
 with (experiment_path / "inpainter.schema").open("w") as f:
@@ -253,7 +270,7 @@ with (experiment_path / "opt.schema").open("w") as f:
 for loss_name in set(history[0]["losses"].keys()):
     for fold in ["train", "val"]:
         plt.plot(
-            list(range(len(history))),
+            [h["epoch"] for h in history],
             [h["losses"][loss_name][fold] for h in history],
             label=fold,
         )
@@ -262,23 +279,31 @@ for loss_name in set(history[0]["losses"].keys()):
     fig = plt.gcf()
     fig.savefig(experiment_path / f"history.{loss_name}.png")
     plt.show()
+    plt.clf()
 
 
 skip = args.render_every
 
 row_length = vis.row_length(*list(zip(*history[0]["sample_results"]["train"]))[0])
+last_epoch = max(h["epoch"] for h in history)
+
 fig, axes = plt.subplots(
-    int(np.ceil(len(history) / skip) * 2), row_length, figsize=(20, 30)
+    len(
+        [h for h in history if (h["epoch"] % skip) == 0 or h["epoch"] == last_epoch ]
+    )*2, 
+    row_length, figsize=(20, 30)
 )
 
-for e, h in enumerate(history):
-    if e % skip != 0 and e != (len(history) - 1):
+row_no = 0
+for h in tqdm(history):
+
+    e = h["epoch"]
+    if e % skip != 0 and e != last_epoch:
         continue
 
     for ax_no, fold in [(0, "train"), (1, "val")]:
         x, j, p, m, a, d, y = [t[0] for t in h["sample_results"][fold]]
-        row_no = (e // skip) * 2 + ax_no
-
+        # print(e, row_no, axes.shape)
         vis.visualize_sample(
             x,
             j,
@@ -289,8 +314,9 @@ for e, h in enumerate(history):
             y,
             ax_row=axes[row_no],
             title_prefixes={0: f"{e} {fold} "},
-            drawing_fn=rgb_with_mask,
+            drawing_fn=img_with_mask,
         )
+        row_no +=1
 
 epochs_fig = plt.gcf()
 epochs_fig.savefig(experiment_path / "epochs_renders.png")
@@ -300,8 +326,9 @@ epochs_path = experiment_path / "epochs"
 epochs_path.mkdir(exist_ok=True)
 n_rows = 16
 
-for e, h in enumerate(history):
-    if e % skip != 0 and e != (len(history) - 1):
+for h in tqdm(history):
+    e = h["epoch"]
+    if e % skip != 0 and e != last_epoch:
         continue
 
     for ax_no, fold in [(0, "train"), (1, "val")]:
@@ -323,7 +350,7 @@ for e, h in enumerate(history):
                 y,
                 ax_row=axes[row_no],
                 title_prefixes={0: f"{e} {fold} "},
-                drawing_fn=rgb_with_mask,
+                drawing_fn=img_with_mask,
             )
 
         title = f"{e}_{fold}"

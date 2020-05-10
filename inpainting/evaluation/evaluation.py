@@ -1,4 +1,4 @@
-from typing import Dict, List, Callable
+from typing import Dict, List, Callable, Tuple
 
 import numpy as np
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
@@ -6,8 +6,8 @@ from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 from inpainting.datasets.mask_coding import KNOWN
 from inpainting.utils import inpainted
 from inpainting.visualizations.samples import gans_gmms_sample_no_d
-
-
+from inpainting import losses2 as l2
+import torch 
 def outputs_to_images(
         x: np.ndarray,
         j: np.ndarray,
@@ -100,4 +100,23 @@ def images_metrics(
         }
         for (k, img) in img_dict.items()
     ]
+
+
+def loss_like_metrics(
+    model_outputs: Tuple[np.ndarray, ...],
+    loss_fns: Dict[str, l2.InpainterLossFn] = dict(
+        nll=l2.nll_buffered,
+        mse=l2.loss_factory(
+            gathering_fn=l2.buffered_gather_batch_by_mask_indices, calc_fn=l2.mse
+        )
+    )
+):
+    x, j, p, m, a, d, y = [
+        torch.from_numpy(t).unsqueeze(0)
+        for t in model_outputs
+    ]
+    return {
+        fn_name: fn(x, j, p, m, a, d).item()
+        for fn_name, fn in loss_fns.items()
+    }
 

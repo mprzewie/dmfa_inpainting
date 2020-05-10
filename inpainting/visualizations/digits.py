@@ -43,3 +43,11 @@ def rgb_with_mask(
     ax.imshow(x_j)  # , cmap="gray")
     ax.axis("off")
     return ax
+
+def img_with_mask(
+    x: np.ndarray, j: np.ndarray = None, ax: Optional[Axes] = None, clip: bool = True
+):
+    if (x.shape[0]) == 1:
+        return digit_with_mask(x, j, ax, clip)
+    else:
+        return rgb_with_mask(x, j , ax, clip)

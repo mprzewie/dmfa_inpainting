@@ -5,7 +5,7 @@ import numpy as np
 
 from inpainting.datasets.mask_coding import KNOWN, UNKNOWN_LOSS
 from inpainting.utils import inpainted
-from inpainting.visualizations.digits import digit_with_mask as vis_digit_mask
+from inpainting.visualizations.digits import img_with_mask as vis_digit_mask
 import matplotlib.pyplot as plt
 
 
@@ -50,7 +50,7 @@ def gans_gmms_sample_no_d(
 
 def visualize_sample(
         x: np.ndarray, j: np.ndarray, p: np.ndarray, m: np.ndarray, a: np.ndarray, d: np.ndarray, y: int,
-        title_prefixes: Dict[int, str], ax_row: Optional[np.ndarray] = None,
+        title_prefixes: Dict[int, str] = None, ax_row: Optional[np.ndarray] = None,
         drawing_fn: Callable[[np.ndarray, np.ndarray, plt.Axes], None] = vis_digit_mask,
         sample_fn=gans_gmms_sample_no_d
 ):

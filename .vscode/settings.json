@@ -1,6 +1,6 @@
 {
     "python.pythonPath": "/home/mprzewiezlikowski/anaconda3/envs/uj/bin/python",
-    "python.linting.pylintEnabled": true,
+    "python.linting.pylintEnabled": false,
     "python.linting.mypyEnabled": true,
     "python.linting.enabled": true
 }

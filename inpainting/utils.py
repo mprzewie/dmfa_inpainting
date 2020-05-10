@@ -68,4 +68,5 @@ def predictions_for_entire_loader(
             ]
             results.append((x_, j_, p_, m_, a_, d_, y_))
 
+            # print([t.shape for t in (x_, j_, p_, m_, a_, d_,)])
     return results
