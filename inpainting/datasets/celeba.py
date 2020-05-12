@@ -18,7 +18,6 @@ def train_val_datasets(
     mask_configs: Sequence[RandomRectangleMaskConfig] = DEFAULT_MASK_CONFIGS,
     resize_size: Tuple[int, int] = (50, 50),
     crop_size: Tuple[int, int] = (32, 32),
-    deterministic: bool = True,
 ) -> Tuple[CelebA, CelebA]:
 
     base_transform = tr.Compose(
@@ -34,7 +33,7 @@ def train_val_datasets(
         [
             base_transform,
             tr.Lambda(
-                random_mask_fn(mask_configs=mask_configs, deterministic=deterministic)
+                random_mask_fn(mask_configs=mask_configs, deterministic=False)
             ),
         ]
     )
@@ -47,7 +46,7 @@ def train_val_datasets(
                     mask_configs=[
                         m for m in mask_configs if m.value == UNKNOWN_LOSS
                     ],  # only the mask which will be inpainted
-                    deterministic=deterministic,
+                    deterministic=True,
                 )
             ),
         ]
