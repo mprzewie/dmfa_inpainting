@@ -1,0 +1,23 @@
+{
+  "device": "cuda:0",
+  "results_dir": "../results",
+  "experiment_name": "fullconv/64x64/scripted_v2",
+  "dataset_root": "/home/mprzewiezlikowski/uj/.data",
+  "dataset": "celeba",
+  "img_size": 64,
+  "mask_size_hidden": 32,
+  "batch_size": 30,
+  "architecture": "fullconv",
+  "bkb_fc": 32,
+  "bkb_lc": 32,
+  "bkb_depth": 3,
+  "bkb_block_length": 4,
+  "bkb_latent": false,
+  "num_factors": 4,
+  "a_amplitude": 0.5,
+  "lr": 4e-05,
+  "num_epochs": 100,
+  "max_benchmark_batches": 200,
+  "render_every": 5,
+  "dump_val_predictions": false
+}
