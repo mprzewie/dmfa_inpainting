@@ -16,8 +16,8 @@
   "num_factors": 4,
   "a_amplitude": 0.5,
   "lr": 4e-05,
-  "num_epochs": 0,
+  "num_epochs": 400,
   "max_benchmark_batches": 200,
   "render_every": 5,
-  "dump_val_predictions": true
+  "dump_val_predictions": false
 }
