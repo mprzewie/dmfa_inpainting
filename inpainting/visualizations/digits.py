@@ -8,6 +8,15 @@ import matplotlib.pyplot as plt
 from inpainting.datasets.mask_coding import KNOWN, UNKNOWN_LOSS, UNKNOWN_NO_LOSS
 
 
+def img_with_mask(
+    x: np.ndarray, j: np.ndarray = None, ax: Optional[Axes] = None, clip: bool = True
+):
+    if (x.shape[0]) == 1:
+        return digit_with_mask(x, j, ax, clip)
+    else:
+        return rgb_with_mask(x, j, ax, clip)
+
+
 def digit_with_mask(
     x: np.ndarray, j: np.ndarray = None, ax: Optional[Axis] = None, clip: bool = True
 ):
@@ -43,11 +52,3 @@ def rgb_with_mask(
     ax.imshow(x_j)  # , cmap="gray")
     ax.axis("off")
     return ax
-
-def img_with_mask(
-    x: np.ndarray, j: np.ndarray = None, ax: Optional[Axes] = None, clip: bool = True
-):
-    if (x.shape[0]) == 1:
-        return digit_with_mask(x, j, ax, clip)
-    else:
-        return rgb_with_mask(x, j , ax, clip)

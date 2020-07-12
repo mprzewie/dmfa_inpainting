@@ -18,6 +18,21 @@ InpainterLossFn = Callable[
     ],
     torch.Tensor,
 ]
+"""
+The inpainter loss / metric function has the following interface (values in [] denote shape):
+    (X, J, P, M, A, D) -> scalar
+    
+    model inputs:
+        X - data points - [b, c, h, w]
+        J - mask denoting missing values of X - [b, c, h, w]
+    model outputs:
+        P - vector of len n_mixes - [mx]
+        M - means of the predicted mixtures of distributions - [b, mx, c*h*w]
+        A - factor matrices of the predicted mixtures of distributions - [b, mx, l, c*h*w]
+        D - noise vector - [b, mx, c*h*w]
+"""
+
+"""This module contains sub-optimal NLL implementations"""
 
 
 def nll_masked_batch_loss(
@@ -481,7 +496,7 @@ def nll_masked_batch_loss_components(
     """A loss which allows for masks of varying size"""
 
     x_s, p_s, m_s, a_s, d_s = zero_batch_at_mask_indices(X, J, P, M, A, D)
-    
+
     d_s_inv = (1 / (d_s + (d_s == 0))) * (d_s != 0)
 
     x_minus_means = (x_s - m_s).unsqueeze(1)  # ?

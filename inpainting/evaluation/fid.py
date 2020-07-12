@@ -1,4 +1,4 @@
-"""Code adapted from https://github.com/mseitzer/pytorch-fid
+"""Code for frechet distance adapted from https://github.com/mseitzer/pytorch-fid
 """
 from pathlib import Path
 import torch
@@ -9,7 +9,7 @@ import sys
 
 
 use_cuda = torch.cuda.is_available()
-device = torch.device('cuda' if use_cuda else 'cpu')
+device = torch.device("cuda" if use_cuda else "cpu")
 
 FEATURE_DIM = 2048
 RESIZE = 299
@@ -53,13 +53,16 @@ def get_activations(image_iterator, images, model, feature_dim, verbose=True):
             pred_arr[start:end] = batch_feature
 
         if verbose:
-            print('\rProcessed: {}   time: {:.2f}'.format(
-                end, time.time() - t0), end='', flush=True)
+            print(
+                "\rProcessed: {}   time: {:.2f}".format(end, time.time() - t0),
+                end="",
+                flush=True,
+            )
 
     assert end == images
 
     if verbose:
-        print(' done')
+        print(" done")
 
     return pred_arr
 
@@ -89,18 +92,22 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     sigma1 = np.atleast_2d(sigma1)
     sigma2 = np.atleast_2d(sigma2)
 
-    assert mu1.shape == mu2.shape, \
-        'Training and test mean vectors have different lengths'
-    assert sigma1.shape == sigma2.shape, \
-        'Training and test covariances have different dimensions'
+    assert (
+        mu1.shape == mu2.shape
+    ), "Training and test mean vectors have different lengths"
+    assert (
+        sigma1.shape == sigma2.shape
+    ), "Training and test covariances have different dimensions"
 
     diff = mu1 - mu2
 
     # Product might be almost singular
     covmean, _ = linalg.sqrtm(sigma1.dot(sigma2), disp=False)
     if not np.isfinite(covmean).all():
-        msg = ('fid calculation produces singular product; '
-               'adding %s to diagonal of cov estimates') % eps
+        msg = (
+            "fid calculation produces singular product; "
+            "adding %s to diagonal of cov estimates"
+        ) % eps
         print(msg)
         offset = np.eye(sigma1.shape[0]) * eps
         covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
@@ -109,16 +116,17 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     if np.iscomplexobj(covmean):
         if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
             m = np.max(np.abs(covmean.imag))
-            raise ValueError('Imaginary component {}'.format(m))
+            raise ValueError("Imaginary component {}".format(m))
         covmean = covmean.real
 
     tr_covmean = np.trace(covmean)
 
-    return (diff.dot(diff) + np.trace(sigma1) +
-            np.trace(sigma2) - 2 * tr_covmean)
+    return diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean
 
 
-def calculate_activation_statistics(image_iterator, images, model, feature_dim=FEATURE_DIM, verbose=False):
+def calculate_activation_statistics(
+    image_iterator, images, model, feature_dim=FEATURE_DIM, verbose=False
+):
     """Calculation of the statistics used by the FID.
     Params:
     -- image_iterator
@@ -146,18 +154,20 @@ class FID:
         model = InceptionV3([block_idx], RESIZE).to(device)
         self.verbose = verbose
 
-        stats_dir = Path('fid_stats')
-        stats_file = stats_dir / '{}_act_{}_{}.npz'.format(
-            data_name, FEATURE_DIM, RESIZE)
+        stats_dir = Path("fid_stats")
+        stats_file = stats_dir / "{}_act_{}_{}.npz".format(
+            data_name, FEATURE_DIM, RESIZE
+        )
 
         try:
             f = np.load(str(stats_file))
-            mu, sigma = f['mu'], f['sigma']
+            mu, sigma = f["mu"], f["sigma"]
             f.close()
         except FileNotFoundError:
             data_loader, images = self.complete_data()
             mu, sigma = calculate_activation_statistics(
-                data_loader, images, model, verbose)
+                data_loader, images, model, verbose
+            )
             stats_dir.mkdir(parents=True, exist_ok=True)
             np.savez(stats_file, mu=mu, sigma=sigma)
 
@@ -169,7 +179,8 @@ class FID:
 
     def fid(self, image_iterator, images):
         mu, sigma = calculate_activation_statistics(
-            image_iterator, images, self.model, verbose=self.verbose)
+            image_iterator, images, self.model, verbose=self.verbose
+        )
         return calculate_frechet_distance(mu, sigma, *self.stats)
 
 
@@ -187,7 +198,7 @@ class BaseSampler:
             batch_size = batch.shape[0]
             self.n += batch_size
             if self.n > self.images:
-                return batch[:-(self.n - self.images)]
+                return batch[: -(self.n - self.images)]
             return batch
         else:
             raise StopIteration
@@ -213,4 +224,3 @@ class BaseImputationSampler:
 
     def impute(self, data, mask):
         raise NotImplementedError
-
