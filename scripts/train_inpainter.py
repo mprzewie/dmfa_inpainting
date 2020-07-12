@@ -32,7 +32,7 @@ from inpainting.utils import predictions_for_entire_loader
 from inpainting.inpainters.fullconv import FullyConvolutionalInpainter
 from inpainting import backbones as bkb
 from inpainting import losses2 as l2
-
+from torchvision.datasets import MNIST, FashionMNIST
 import matplotlib
 
 matplotlib.rcParams["figure.facecolor"] = "white"
@@ -53,11 +53,14 @@ parser.add_argument("--experiment_name", type=str, required=True)
 
 parser.add_argument("--dataset_root", type=str, default=str(Path.home() / "uj/.data/"))
 
-parser.add_argument("--dataset", type=str, default="mnist", choices=["mnist", "celeba"])
+parser.add_argument("--dataset", type=str, default="mnist", choices=["mnist", "fashion_mnist", "celeba"])
 
 parser.add_argument("--img_size", type=int, default=28)
 
-parser.add_argument("--mask_size_hidden", type=int, default=14)
+parser.add_argument("--mask_hidden_h", type=int, default=14)
+parser.add_argument("--mask_hidden_w", type=int, default=14)
+
+
 
 parser.add_argument("--batch_size", type=int, default=24)
 
@@ -91,6 +94,9 @@ parser.add_argument("--max_benchmark_batches", type=int, default=200)
 
 parser.add_argument("--render_every", type=int, default=5)
 
+parser.add_argument("--l_nll_weight", type=float, default=1)
+parser.add_argument("--l_mse_weight", type=float, default=0)
+
 parser.add_argument(
     "--dump_val_predictions",
     dest="dump_val_predictions",
@@ -98,6 +104,12 @@ parser.add_argument(
     default=False,
 )
 
+parser.add_argument(
+    "--render_history",
+    dest="render_history",
+    action="store_true",
+    default=False,
+)
 
 args = parser.parse_args()
 
@@ -120,13 +132,15 @@ with (experiment_path / "args.json").open("w") as f:
 
 
 img_size = args.img_size
-hidden_mask_size = args.mask_size_hidden
+mask_hidden_h = args.mask_hidden_h
+mask_hidden_w = args.mask_hidden_w
 
-if args.dataset == "mnist":
+if "mnist" in args.dataset:
     ds_train, ds_val = mnist_train_val_ds(
-        Path(args.dataset_root),
+        ds_type=FashionMNIST if args.dataset=="fashion_mnist" else MNIST,
+        save_path=Path(args.dataset_root),
         mask_configs=[
-            RandomRectangleMaskConfig(UNKNOWN_LOSS, hidden_mask_size, hidden_mask_size)
+            RandomRectangleMaskConfig(UNKNOWN_LOSS, mask_hidden_h, mask_hidden_w)
         ],
         resize_size=(img_size, img_size),
     )
@@ -134,9 +148,9 @@ elif args.dataset == "celeba":
     img_to_crop = 1.875
     full_img_size = int(img_size * img_to_crop)
     ds_train, ds_val = celeba_train_val_ds(
-        Path(args.dataset_root),
+        save_path=Path(args.dataset_root),
         mask_configs=[
-            RandomRectangleMaskConfig(UNKNOWN_LOSS, hidden_mask_size, hidden_mask_size)
+            RandomRectangleMaskConfig(UNKNOWN_LOSS, mask_hidden_h, mask_hidden_w)
         ],
         resize_size=(full_img_size, full_img_size),
         crop_size=(img_size, img_size),
@@ -186,7 +200,7 @@ a_var = lambda x, j, p, m, a, d: a.var()
 
 
 if args.architecture == "fullconv":
-    img_channels = 1 if args.dataset == "mnist" else 3
+    img_channels = 1 if "mnist" in args.dataset else 3
     inpainter = FullyConvolutionalInpainter(
         n_mixes=1,
         a_width=args.num_factors,
@@ -204,7 +218,7 @@ if args.architecture == "fullconv":
         ),
     )
 elif args.architecture == "linear_heads":
-    if args.dataset == "mnist":
+    if "mnist"in args.dataset:
         inpainter = MNISTConvolutionalInpainter(
             n_mixes=1,
             last_channels=args.bkb_lc,
@@ -241,14 +255,15 @@ history = train_inpainter(
     dl_train,
     dl_val,
     opt,
-    loss_fn=l2.nll_buffered,
+    loss_fn=l2.nll_plus_mse_weighted_loss(args.l_nll_weight, args.l_mse_weight),
     n_epochs=args.num_epochs,
     device=device,
     max_benchmark_batches=args.max_benchmark_batches,
     losses_to_log=dict(
         mse=l2.loss_factory(
             gathering_fn=l2.buffered_gather_batch_by_mask_indices, calc_fn=l2.mse
-        )
+        ),
+        nll=l2.nll_buffered
     ),
     tqdm_loader=True,
     export_path=experiment_path,
@@ -321,41 +336,42 @@ for h in tqdm(history):
 epochs_fig = plt.gcf()
 epochs_fig.savefig(experiment_path / "epochs_renders.png")
 
+if args.render_history:
 
-epochs_path = experiment_path / "epochs"
-epochs_path.mkdir(exist_ok=True)
-n_rows = 16
+    epochs_path = experiment_path / "epochs"
+    epochs_path.mkdir(exist_ok=True)
+    n_rows = 16
 
-for h in tqdm(history):
-    e = h["epoch"]
-    if e % skip != 0 and e != last_epoch:
-        continue
+    for h in tqdm(history):
+        e = h["epoch"]
+        if e % skip != 0 and e != last_epoch:
+            continue
 
-    for ax_no, fold in [(0, "train"), (1, "val")]:
+        for ax_no, fold in [(0, "train"), (1, "val")]:
 
-        row_length = vis.row_length(*list(zip(*h["sample_results"][fold]))[0])
+            row_length = vis.row_length(*list(zip(*h["sample_results"][fold]))[0])
 
-        fig, axes = plt.subplots(n_rows, row_length, figsize=(20, 30))
+            fig, axes = plt.subplots(n_rows, row_length, figsize=(20, 30))
 
-        for row_no, (x, j, p, m, a, d, y) in enumerate(
-            list(zip(*h["sample_results"][fold]))[:n_rows]
-        ):
-            vis.visualize_sample(
-                x,
-                j,
-                p,
-                m,
-                a,
-                d,
-                y,
-                ax_row=axes[row_no],
-                title_prefixes={0: f"{e} {fold} "},
-                drawing_fn=img_with_mask,
-            )
+            for row_no, (x, j, p, m, a, d, y) in enumerate(
+                list(zip(*h["sample_results"][fold]))[:n_rows]
+            ):
+                vis.visualize_sample(
+                    x,
+                    j,
+                    p,
+                    m,
+                    a,
+                    d,
+                    y,
+                    ax_row=axes[row_no],
+                    title_prefixes={0: f"{e} {fold} "},
+                    drawing_fn=img_with_mask,
+                )
 
-        title = f"{e}_{fold}"
-        plt.suptitle(title)
-        plt.savefig(epochs_path / f"{title}.png")
+            title = f"{e}_{fold}"
+            plt.suptitle(title)
+            plt.savefig(epochs_path / f"{title}.png")
 
 
 hist_last_epoch = history[-1]
@@ -424,5 +440,5 @@ if args.dump_val_predictions:
     val_results = predictions_for_entire_loader(
         inpainter.to(torch.device("cpu")), dl_val, torch.device("cpu")
     )
-    with (experiment_path / "val_predictions.pkl").open("wb") as f:
+    with (experiment_path / f"val_predictions_{mask_hidden_h}x{mask_hidden_w}.pkl").open("wb") as f:
         pickle.dump(val_results, f)

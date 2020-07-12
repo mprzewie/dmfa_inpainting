@@ -106,13 +106,14 @@ def loss_like_metrics(
     model_outputs: Tuple[np.ndarray, ...],
     loss_fns: Dict[str, l2.InpainterLossFn] = dict(
         nll=l2.nll_buffered,
-        mse=l2.loss_factory(
-            gathering_fn=l2.buffered_gather_batch_by_mask_indices, calc_fn=l2.mse
-        )
+        mse=l2.mse_buffered,
+        signed_diff_mean=l2.signed_difference_mean_buffered,
+        signed_diff_std=l2.signed_difference_std_buffered,
+
     )
 ):
     x, j, p, m, a, d, y = [
-        torch.from_numpy(t).unsqueeze(0)
+        torch.from_numpy(t if not isinstance(t, tuple) else t[0]).unsqueeze(0)
         for t in model_outputs
     ]
     return {

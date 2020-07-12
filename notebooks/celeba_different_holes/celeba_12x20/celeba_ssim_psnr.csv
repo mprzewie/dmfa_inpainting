@@ -1,0 +1,15 @@
+,imputer_model,img_kind,structural_similarity,peak_signal_noise_ratio
+0,gmm_linear_heads,inpainted_means_0,0.92 ± 0.04,27.08 ± 3.46
+1,gmm_linear_heads,inpainted_samples_0,0.91 ± 0.05,26.14 ± 3.44
+2,gmm_linear_heads,mask,0.08 ± 0.06,4.52 ± 0.96
+3,gmm_linear_heads,masked,0.53 ± 0.07,11.50 ± 2.07
+4,gmm_linear_heads,means_0,0.74 ± 0.08,15.30 ± 2.09
+5,gmm_linear_heads,original,1.00 ± 0.00,inf ± nan
+6,gmm_linear_heads,samples_0,0.72 ± 0.09,15.04 ± 2.04
+7,torch_mfa,inpainted_means_0,0.91 ± 0.05,26.61 ± 3.52
+8,torch_mfa,inpainted_samples_0,0.76 ± 0.09,18.30 ± 3.39
+9,torch_mfa,mask,0.08 ± 0.06,4.52 ± 0.96
+10,torch_mfa,masked,0.53 ± 0.07,11.50 ± 2.07
+11,torch_mfa,means_0,0.91 ± 0.05,26.61 ± 3.52
+12,torch_mfa,original,1.00 ± 0.00,inf ± nan
+13,torch_mfa,samples_0,0.59 ± 0.16,13.21 ± 2.52

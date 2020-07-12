@@ -5,8 +5,9 @@
   "dataset_root": "/home/mprzewiezlikowski/uj/.data",
   "dataset": "celeba",
   "img_size": 32,
-  "mask_size_hidden": 16,
-  "batch_size": 96,
+  "mask_hidden_h": 12,
+  "mask_hidden_w": 20,
+  "batch_size": 24,
   "architecture": "linear_heads",
   "bkb_fc": 32,
   "bkb_lc": 24,
@@ -19,5 +20,8 @@
   "num_epochs": 0,
   "max_benchmark_batches": 200,
   "render_every": 5,
-  "dump_val_predictions": true
+  "l_nll_weight": 1,
+  "l_mse_weight": 0,
+  "dump_val_predictions": true,
+  "render_history": false
 }
