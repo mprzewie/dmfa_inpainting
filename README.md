@@ -1,4 +1,4 @@
-# gmms_inpainting
+# dmfa_inpainting
 
 Source code for [Estimating conditional density of missing values using deep Gaussian mixture model](https://openreview.net/forum?id=VR6mXmaHacL).
 
