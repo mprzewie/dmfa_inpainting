@@ -1,6 +1,6 @@
 # dmfa_inpainting
 
-Source code for [Estimating conditional density of missing values using deep Gaussian mixture model](https://openreview.net/forum?id=VR6mXmaHacL).
+Source code for [Estimating conditional density of missing values using deep Gaussian mixture model](https://arxiv.org/abs/2010.02183).
 
 ## Requirements
 
@@ -32,3 +32,21 @@ There are several Jupyter Notebooks in the [notebooks](https://github.com/mprzew
 They were used for initial experiments with the DMFA models, as well as analysis of the results and calculating metrics reported in the paper.
 
 The notebooks are not guaranteed to run 100% correctly due to subsequent code refactor.
+
+## Citation
+ 
+```
+@article{Przewiezlikowski_2020,
+   title={Estimating Conditional Density of Missing Values Using Deep Gaussian Mixture Model},
+   ISBN={9783030638368},
+   ISSN={1611-3349},
+   url={http://dx.doi.org/10.1007/978-3-030-63836-8_19},
+   DOI={10.1007/978-3-030-63836-8_19},
+   journal={Lecture Notes in Computer Science},
+   publisher={Springer International Publishing},
+   author={Przewięźlikowski, Marcin and Śmieja, Marek and Struski, Łukasz},
+   year={2020},
+   pages={220–231}
+}
+```
+
