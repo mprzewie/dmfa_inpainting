@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple, Sequence
+from typing import Tuple, Sequence, Type
 
 from torchvision.datasets import MNIST
 from torchvision import transforms as tr
@@ -15,7 +15,7 @@ DEFAULT_MASK_CONFIGS = (
 def train_val_datasets(
     save_path: Path,
     mask_configs: Sequence[RandomRectangleMaskConfig] = DEFAULT_MASK_CONFIGS,
-    ds_type: MNIST = MNIST,
+    ds_type: Type[MNIST] = MNIST,
     resize_size: Tuple[int, int] = (28, 28),
 ) -> Tuple[MNIST, MNIST]:
 
@@ -23,11 +23,7 @@ def train_val_datasets(
     train_transform = tr.Compose(
         [
             base_transform,
-            tr.Lambda(
-                random_mask_fn(
-                    mask_configs=mask_configs, deterministic=False
-                    )
-            ),
+            tr.Lambda(random_mask_fn(mask_configs=mask_configs, deterministic=False)),
         ]
     )
 
@@ -50,8 +46,4 @@ def train_val_datasets(
     ds_train = ds_type(save_path, train=True, download=True, transform=train_transform)
     ds_val = ds_type(save_path, train=False, download=True, transform=val_transform)
 
-    
-
     return ds_train, ds_val
-
-

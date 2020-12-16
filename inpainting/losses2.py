@@ -1,6 +1,5 @@
-from time import time
+"""This module contains more optimized NLL implementation than losses.py"""
 from collections import Callable
-from pprint import pprint
 from typing import Tuple
 
 import torch
@@ -46,8 +45,10 @@ def nll_calc_woodbury(x_s, p_s, m_s, a_s, d_s):
 def mse(x_s, p_s, m_s, a_s, d_s):
     return ((x_s - m_s) ** 2).sum()
 
+
 def signed_difference_mean(x_s, p_s, m_s, a_s, d_s):
     return (x_s - m_s).mean()
+
 
 def signed_difference_std(x_s, p_s, m_s, a_s, d_s):
     return (x_s - m_s).std()
@@ -171,26 +172,28 @@ nll_zero = loss_factory(zero_batch_at_mask_indices, nll_calc_woodbury)
 nll_gather = loss_factory(gather_batch_by_mask_indices, nll_calc_woodbury)
 nll_buffered = loss_factory(gathering_fn=buffered_gather_batch_by_mask_indices)
 
-mse_buffered= loss_factory(gathering_fn=buffered_gather_batch_by_mask_indices, calc_fn=mse)
-signed_difference_mean_buffered = loss_factory(gathering_fn=buffered_gather_batch_by_mask_indices, calc_fn=signed_difference_mean)
-signed_difference_std_buffered = loss_factory(gathering_fn=buffered_gather_batch_by_mask_indices, calc_fn=signed_difference_std)
+mse_buffered = loss_factory(
+    gathering_fn=buffered_gather_batch_by_mask_indices, calc_fn=mse
+)
+signed_difference_mean_buffered = loss_factory(
+    gathering_fn=buffered_gather_batch_by_mask_indices, calc_fn=signed_difference_mean
+)
+signed_difference_std_buffered = loss_factory(
+    gathering_fn=buffered_gather_batch_by_mask_indices, calc_fn=signed_difference_std
+)
 
-def nll_plus_mse_calc(
-    nll_weight = 1,
-    mse_weight = 0
-) -> Callable:
+
+def nll_plus_mse_calc(nll_weight=1, mse_weight=0) -> Callable:
     def calc_fn(x_s, p_s, m_s, a_s, d_s):
         nll_val = nll_calc_woodbury(x_s, p_s, m_s, a_s, d_s)
         mse_val = mse(x_s, p_s, m_s, a_s, d_s)
         return (nll_weight * nll_val) + (mse_weight * mse_val)
-    
+
     return calc_fn
 
-def nll_plus_mse_weighted_loss(    
-    nll_weight = 1,
-    mse_weight = 0
-) -> Callable:
+
+def nll_plus_mse_weighted_loss(nll_weight=1, mse_weight=0) -> Callable:
     return loss_factory(
         gathering_fn=buffered_gather_batch_by_mask_indices,
-        calc_fn=nll_plus_mse_calc(nll_weight, mse_weight)
+        calc_fn=nll_plus_mse_calc(nll_weight, mse_weight),
     )
