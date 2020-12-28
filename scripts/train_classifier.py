@@ -2,6 +2,9 @@
 # coding: utf-8
 import json
 import sys
+
+sys.path.append("..")
+
 from pprint import pprint
 
 from torch.utils.data import DataLoader
@@ -10,7 +13,6 @@ from torchvision.datasets import MNIST, FashionMNIST
 from classification.inpainting_classifier import InpaintingClassifier
 from common import dmfa_from_args
 
-sys.path.append("..")
 
 import torch
 from torch import nn
