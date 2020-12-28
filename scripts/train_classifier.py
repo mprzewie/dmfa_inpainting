@@ -10,7 +10,7 @@ from pprint import pprint
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST, FashionMNIST
 
-from classification.inpainting_classifier import InpaintingClassifier
+from inpainting.classification.inpainting_classifier import InpaintingClassifier
 from common import dmfa_from_args
 
 
