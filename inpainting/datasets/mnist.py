@@ -35,7 +35,7 @@ def train_val_datasets(
                     mask_configs=[
                         m
                         for m in mask_configs
-                        if m.value == UNKNOWN_LOSS or m.value == KNOWN
+                        if m.value in [UNKNOWN_LOSS, KNOWN]
                     ],  # only the mask which will be inpainted
                     deterministic=True,
                 )

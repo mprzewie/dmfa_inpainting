@@ -20,7 +20,7 @@ should suffice.
 To train the DMFA model, see the script:
 
 ```bash
-python scripts/train.py --h
+python scripts/train_inpainter.py --h
 ```
 ### Classical MFA baseline
 
@@ -31,9 +31,11 @@ The implementation of classical MFA baseline we compare ourselves to in the pape
 There are several Jupyter Notebooks in the [notebooks](https://github.com/mprzewie/gmms_inpainting/tree/master/notebooks) directory. 
 They were used for initial experiments with the DMFA models, as well as analysis of the results and calculating metrics reported in the paper.
 
-The notebooks are not guaranteed to run 100% correctly due to subsequent code refactor.
+The notebooks are not guaranteed to run 100% correctly due to the subsequent code refactor.
 
 ## Citation
+
+If you find our work useful, please cite us!
  
 ```
 @article{Przewiezlikowski_2020,

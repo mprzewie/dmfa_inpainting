@@ -59,10 +59,6 @@ def train_step(
     return loss.item()
 
 
-#     print([
-#         t1 -s, t2 - t1, t3 - t2, t4 - t3
-#     ])
-
 
 def train_inpainter(
     inpainter: InpainterModule,
@@ -78,6 +74,7 @@ def train_inpainter(
     scheduler: Optional[_LRScheduler] = None,
     export_path: Optional[Path] = None,
     export_freq: int = 5,
+    dump_sample_results: bool = False,
 ) -> List:
     print("training on device", device)
     epoch = 0
@@ -114,8 +111,8 @@ def train_inpainter(
 
     inpainter = inpainter.to(device)
     if tqdm_loader:
-        data_loader_train = tqdm(data_loader_train)
-        data_loader_val = tqdm(data_loader_val)
+        data_loader_train = tqdm(data_loader_train, desc="train_loader")
+        data_loader_val = tqdm(data_loader_val, desc="val_loader")
 
     history = (
         history
@@ -132,7 +129,7 @@ def train_inpainter(
         ]
     )
 
-    for e in tqdm(range(epoch, n_epochs + epoch)):
+    for e in tqdm(range(epoch, n_epochs + epoch), desc="Epoch"):
         inpainter.train()
 
         for ((x, j), y) in data_loader_train:
@@ -154,10 +151,12 @@ def train_inpainter(
         if export_path is not None and (
             (e % export_freq) == 0 or e == (epoch + n_epochs - 1)
         ):
-            histories_path = export_path / "histories"
-            histories_path.mkdir(exist_ok=True)
-            with (histories_path / f"{e}.pkl").open("wb") as f:
-                pickle.dump(history_elem, f)
+
+            if dump_sample_results:
+                histories_path = export_path / "histories"
+                histories_path.mkdir(exist_ok=True)
+                with (histories_path / f"{e}.pkl").open("wb") as f:
+                    pickle.dump(history_elem, f)
 
             state_dict = {
                 "inpainter": inpainter.state_dict(),

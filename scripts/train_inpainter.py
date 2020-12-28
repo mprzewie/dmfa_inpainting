@@ -20,6 +20,7 @@ import pickle
 from pprint import pprint
 import json
 from tqdm import tqdm
+from inpainting.inpainters.fullconv import FullyConvolutionalInpainter
 from inpainting.inpainters.linear_heads import LinearHeadsInpainter
 from inpainting.visualizations.stats import plot_arrays_stats
 from inpainting.datasets.celeba import train_val_datasets as celeba_train_val_ds
@@ -29,7 +30,6 @@ from inpainting.datasets.utils import RandomRectangleMaskConfig
 from inpainting.visualizations.digits import img_with_mask
 from inpainting.training import train_inpainter
 from inpainting.utils import predictions_for_entire_loader
-from inpainting.inpainters.fullconv import FullyConvolutionalInpainter
 from inpainting import backbones as bkb
 from inpainting import losses2 as l2
 from torchvision.datasets import MNIST, FashionMNIST
@@ -49,7 +49,7 @@ parser.add_argument(
 parser.add_argument(
     "--results_dir",
     type=Path,
-    default=Path("../results"),
+    default="../results/inpainting",
     help="Base of path where experiment results will be dumped.",
 )
 parser.add_argument(
@@ -189,6 +189,14 @@ parser.add_argument(
     default=False,
     help="Whether to dump predictions for the entire validation dataset with the final model after training.",
 )
+parser.add_argument(
+    "--dump_sample_results",
+    dest="dump_sample_results",
+    action="store_true",
+    default=False,
+    help="Whether to dump predictions for the entire validation dataset with the final model after training.",
+)
+
 
 args = parser.parse_args()
 
@@ -203,7 +211,13 @@ experiment_path.mkdir(exist_ok=True, parents=True)
 print("Experiment path:", experiment_path.absolute())
 
 with (experiment_path / "args.json").open("w") as f:
-    json.dump(args_dict, f, indent=2)
+    json.dump(
+        {
+            k: v if isinstance(v, (int, str, bool, float)) else str(v)
+            for (k,v)
+            in args_dict.items()
+        }, 
+        f, indent=2)
 
 img_size = args.img_size
 mask_hidden_h = args.mask_hidden_h
@@ -322,6 +336,7 @@ history = train_inpainter(
     tqdm_loader=True,
     export_path=experiment_path,
     export_freq=args.render_every,
+    dump_sample_results=args.dump_sample_results
 )
 
 # save schemas of the inpainter and optimizer
