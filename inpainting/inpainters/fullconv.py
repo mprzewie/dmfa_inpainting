@@ -21,7 +21,7 @@ class FullyConvolutionalInpainter(InpainterModule):
         c_h_w: Tuple[int, int, int] = (1, 28, 28),
         m_offset: float = 0,
     ):
-        super().__init__()
+        super().__init__(n_mixes=n_mixes, a_width=a_width)
         c, h, w = c_h_w
         in_size = c * h * w
         # hidden_size = h * w * last_channels
