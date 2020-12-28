@@ -3,7 +3,10 @@ from pathlib import Path
 
 import torch
 
-parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
+parser = ArgumentParser(
+    formatter_class=ArgumentDefaultsHelpFormatter,
+    description="Train and benchmark a DMFA inpainter.",
+)
 
 
 experiment_args = parser.add_argument_group("Experiment")
@@ -70,63 +73,6 @@ data_args.add_argument(
     help="Width of hidden data masks which will be sampled on top of images.",
 )
 
-model_args = parser.add_argument_group("Inpainter model")
-model_args.add_argument(
-    "--architecture",
-    type=str,
-    default="linear_heads",
-    choices=["fullconv", "linear_heads"],
-    help="Model architecture to use.",
-)
-
-model_args.add_argument(
-    "--bkb_fc",
-    type=int,
-    default=32,
-    help="Number of channels in the first convolution of model backbone",
-)
-
-model_args.add_argument(
-    "--bkb_lc",
-    type=int,
-    default=32,
-    help="Number of channels in the last convolution of model backbone",
-)
-
-model_args.add_argument(
-    "--bkb_depth",
-    type=int,
-    default=2,
-    help="Number of conv-relu-batchnorm blocks in fully convolutional backbone. Irrelevant when architecture is `linear_heads`.",
-)
-
-model_args.add_argument(
-    "--bkb_block_length",
-    type=int,
-    default=1,
-    help="Number of repetitions of conv-relu-batchnorm sequence in fully convolutional. Irrelevant when architecture is `linear_heads`.",
-)
-model_args.add_argument(
-    "--bkb_latent",
-    dest="bkb_latent",
-    action="store_true",
-    default=False,
-    help="Whether the fully convolutional backbone should have a linear layer between downsampling and upsampling sections. Irrelevant when architecture is `linear_heads`.",
-)
-
-model_args.add_argument(
-    "--num_factors",
-    type=int,
-    default=4,
-    help="Number of factors / width of matrix A returned by the model, which is used to estimate covariance. In the paper, this value is often referred to as `l`.",
-)
-
-model_args.add_argument(
-    "--a_amplitude",
-    type=float,
-    default=0.5,
-    help="Amplitude of sigmoid activation through which factor (A) matrices are passed. Amplitude X means that factor matrix can take values in range (-X/2, X/2)",
-)
 
 training_args = parser.add_argument_group("Training")
 
@@ -147,16 +93,11 @@ environment_args = parser.add_argument_group(
 
 environment_args.add_argument(
     "--device",
-    type=str,
     default=("cuda:0" if torch.cuda.is_available() else "cpu"),
     help="Torch device to use for computations.",
+    type=torch.device,
 )
-environment_args.add_argument(
-    "--results_dir",
-    type=Path,
-    default="../results/inpainting",
-    help="Base of path where experiment results will be dumped.",
-)
+
 
 environment_args.add_argument(
     "--dataset_root",

@@ -20,8 +20,6 @@ import pickle
 from pprint import pprint
 import json
 from tqdm import tqdm
-from inpainting.inpainters.fullconv import FullyConvolutionalInpainter
-from inpainting.inpainters.linear_heads import LinearHeadsInpainter
 from inpainting.visualizations.stats import plot_arrays_stats
 from inpainting.datasets.celeba import train_val_datasets as celeba_train_val_ds
 from inpainting.datasets.mnist import train_val_datasets as mnist_train_val_ds
@@ -30,14 +28,14 @@ from inpainting.datasets.utils import RandomRectangleMaskConfig
 from inpainting.visualizations.digits import img_with_mask
 from inpainting.training import train_inpainter
 from inpainting.utils import predictions_for_entire_loader
-from inpainting import backbones as bkb
 from inpainting import losses2 as l2
 from torchvision.datasets import MNIST, FashionMNIST
 import matplotlib
 
 matplotlib.rcParams["figure.facecolor"] = "white"
 
-from args import parser, training_args
+from common_args import parser, training_args, environment_args
+from common import dmfa_from_args
 
 training_args.add_argument(
     "--l_nll_weight", type=float, default=1, help="Weight of NLL in the training loss."
@@ -46,12 +44,78 @@ training_args.add_argument(
     "--l_mse_weight", type=float, default=0, help="Weight of MSE in the training loss."
 )
 
+environment_args.add_argument(
+    "--results_dir",
+    type=Path,
+    default="../results/inpainting",
+    help="Base of path where experiment results will be dumped.",
+)
+
+dmfa_args = parser.add_argument_group("DMFA parameters")
+dmfa_args.add_argument(
+    "--architecture",
+    type=str,
+    default="linear_heads",
+    choices=["fullconv", "linear_heads"],
+    help="DMFA architecture to use.",
+)
+
+dmfa_args.add_argument(
+    "--bkb_fc",
+    type=int,
+    default=32,
+    help="Number of channels in the first convolution of model backbone",
+)
+
+dmfa_args.add_argument(
+    "--bkb_lc",
+    type=int,
+    default=32,
+    help="Number of channels in the last convolution of model backbone",
+)
+
+dmfa_args.add_argument(
+    "--bkb_depth",
+    type=int,
+    default=2,
+    help="Number of conv-relu-batchnorm blocks in fully convolutional backbone. Irrelevant when architecture is `linear_heads`.",
+)
+
+dmfa_args.add_argument(
+    "--bkb_block_length",
+    type=int,
+    default=1,
+    help="Number of repetitions of conv-relu-batchnorm sequence in fully convolutional. Irrelevant when architecture is `linear_heads`.",
+)
+dmfa_args.add_argument(
+    "--bkb_latent",
+    dest="bkb_latent",
+    action="store_true",
+    default=False,
+    help="Whether the fully convolutional backbone should have a linear layer between downsampling and upsampling sections. Irrelevant when architecture is `linear_heads`.",
+)
+
+dmfa_args.add_argument(
+    "--num_factors",
+    type=int,
+    default=4,
+    help="Number of factors / width of matrix A returned by the model, which is used to estimate covariance. In the paper, this value is often referred to as `l`.",
+)
+
+dmfa_args.add_argument(
+    "--a_amplitude",
+    type=float,
+    default=0.5,
+    help="Amplitude of sigmoid activation through which factor (A) matrices are passed. Amplitude X means that factor matrix can take values in range (-X/2, X/2)",
+)
+
+
 args = parser.parse_args()
 
 args_dict = vars(args)
 pprint(args_dict)
 
-device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+device = args.device
 
 experiment_path = args.results_dir / args.dataset / args.experiment_name
 experiment_path.mkdir(exist_ok=True, parents=True)
@@ -129,36 +193,7 @@ log_determinants = lambda x, j, p, m, a, d: nll_masked_batch_loss_components(
 a_variance = lambda x, j, p, m, a, d: a.var()
 
 # instantiate the inpainter model
-
-img_channels = 1 if "mnist" in args.dataset else 3
-
-if args.architecture == "fullconv":
-    inpainter = FullyConvolutionalInpainter(
-        a_width=args.num_factors,
-        a_amplitude=args.a_amplitude,
-        c_h_w=(img_channels, img_size, img_size),
-        last_channels=args.bkb_lc,
-        extractor=bkb.down_up_backbone(
-            (img_channels * 2, img_size, img_size),
-            depth=args.bkb_depth,
-            first_channels=args.bkb_fc,
-            last_channels=args.bkb_lc,
-            kernel_size=5,
-            latent=args.bkb_latent,
-            block_length=args.bkb_block_length,
-        ),
-        n_mixes=1,
-    )
-elif args.architecture == "linear_heads":
-    inpainter = LinearHeadsInpainter(
-        c_h_w=(img_channels, img_size, img_size),
-        last_channels=args.bkb_lc,
-        a_width=args.num_factors,
-        a_amplitude=args.a_amplitude,
-        n_mixes=1,
-    )
-else:
-    raise ValueError("can't initialize inpainter")
+inpainter = dmfa_from_args(args)
 
 inpainter.train()
 
