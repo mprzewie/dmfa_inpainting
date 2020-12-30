@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # coding: utf-8
-import json
 import sys
 
 sys.path.append("..")
@@ -10,10 +9,9 @@ from pprint import pprint
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST, FashionMNIST
 
-from inpainting.classification.inpainting_classifier import InpaintingClassifier
-from common import dmfa_from_args
+from common import dmfa_from_args, mfa_from_path
 
-
+import json
 import torch
 from torch import nn
 from pathlib import Path
@@ -26,6 +24,9 @@ from inpainting.visualizations.digits import img_with_mask
 from inpainting.custom_layers import ConVar
 from inpainting.inpainters import mocks as inpainters_mocks
 from inpainting.classification.training import train_classifier
+from inpainting.classification.inpainting_classifier import InpaintingClassifier
+from dotted.utils import dot
+
 import matplotlib
 
 matplotlib.rcParams["figure.facecolor"] = "white"
@@ -45,22 +46,22 @@ inpainter_args.add_argument(
     "--inpainter_type",
     type=str,
     default="gt",
-    choices=["gt", "noise", "zero"],  # TODO DMFA, MFA
+    choices=["gt", "noise", "zero", "dmfa", "mfa"],
     help="Type of Inpainter. 'gt', 'noise', 'zero' are mock models which produce ground-truth, randn noise and zero imputations, respectively. ",
-    # TODO DMFA
-    # "If one of those models is chosen, other inpainter parameters are ignored. "
-    # "If DMFA is chosen, it must be loaded from a checkpoint."
 )
 
-# TODO load DMFA from a directory - parameters are stored in a JSON and checkpoint is stored in the checkpoint.pth
-# inpainter_args.add_argument(
-#     "--inpainter_checkpoint",
-#     type=Path,
-#     help="Path to the file with inpainter's checkpoint. Will typically be named 'training.state'.",
-#     required=False
-# )
+inpainter_args.add_argument(
+    "--inpainter_path",
+    type=Path,
+    help="Used if inpainter_type=dmfa. Should point to DMFA export directory which contains 'args.json' and 'training.state' files.",
+    required=False,
+    default=None,
+)
 
 args = parser.parse_args()
+
+if args.inpainter_type in ["gt", "noise", "zero"]:
+    args.inpainter_path = None
 
 args_dict = vars(args)
 pprint(args_dict)
@@ -117,9 +118,20 @@ dl_train = DataLoader(ds_train, args.batch_size, shuffle=True)
 dl_val = DataLoader(ds_val, 16, shuffle=False)
 
 if args.inpainter_type == "dmfa":
-    inpainter = dmfa_from_args(args)
-    checkpoint = torch.load(args.inpainter_checkpoint, map_location="cpu")
+    print(f"Loading DMFA inpainter from {args.inpainter_path}")
+    dmfa_path = args.inpainter_path
+
+    with (dmfa_path / "args.json").open("r") as f:
+        dmfa_args = dot(json.load(f))
+
+    inpainter = dmfa_from_args(dmfa_args)
+
+    checkpoint = torch.load((dmfa_path / "training.state"), map_location="cpu")
     inpainter.load_state_dict(checkpoint["inpainter"])
+
+elif args.inpainter_type == "mfa":
+    print(f"Loading MFA inpainter from {args.inpainter_path}")
+    inpainter = mfa_from_path(args.inpainter_path)
 
 elif args.inpainter_type == "gt":
     inpainter = inpainters_mocks.GroundTruthInpainter()
@@ -142,6 +154,13 @@ inpainting_classifier = InpaintingClassifier(
 
 optimizer = torch.optim.Adam(inpainting_classifier.parameters(), lr=args.lr)
 
+# save schemas of the inpainter and optimizer
+with (experiment_path / "inpainting_classifier.schema").open("w") as f:
+    print(inpainting_classifier, file=f)
+
+with (experiment_path / "opt.schema").open("w") as f:
+    print(optimizer, file=f)
+
 history = train_classifier(
     inpainting_classifier=inpainting_classifier,
     data_loader_train=dl_train,
@@ -151,14 +170,10 @@ history = train_classifier(
     device=device,
     tqdm_loader=True,
 )
-# save schemas of the inpainter and optimizer
-with (experiment_path / "inpainting_classifier.schema").open("w") as f:
-    print(inpainting_classifier, file=f)
-
-with (experiment_path / "opt.schema").open("w") as f:
-    print(optimizer, file=f)
-
 pprint(history)
+
+with (experiment_path / "history.json").open("w") as f:
+    json.dump(history, f)
 
 for metric_name in set(history[0]["metrics"].keys()):
     for fold in ["train", "val"]:

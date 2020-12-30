@@ -4,7 +4,7 @@ Source code for [Estimating conditional density of missing values using deep Gau
 
 ## Requirements
 
-Python 3.7 or higher is required.
+Python 3.8 or higher is required.
 Models have been implemented with PyTorch.
 
 To install the requirements, running:

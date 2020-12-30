@@ -1,9 +1,12 @@
 """Script utilities"""
+import sys
+
 from typing import Union
 
 from inpainting.inpainters.fullconv import FullyConvolutionalInpainter
 from inpainting.inpainters.linear_heads import LinearHeadsInpainter
 from inpainting import backbones as bkb
+from pathlib import Path
 
 
 def dmfa_from_args(args) -> Union[FullyConvolutionalInpainter, LinearHeadsInpainter]:
@@ -39,3 +42,12 @@ def dmfa_from_args(args) -> Union[FullyConvolutionalInpainter, LinearHeadsInpain
         raise ValueError("can't initialize inpainter")
 
     return inpainter
+
+
+def mfa_from_path(mfa_path: Path):
+    # https://github.com/mprzewie/gmm_missing
+    # TODO make it less hacky
+    sys.path.append("../../gmm_missing")
+    from mfa_wrapper import MFAWrapper
+
+    return MFAWrapper.from_path(mfa_path)

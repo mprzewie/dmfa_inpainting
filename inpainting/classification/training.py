@@ -60,26 +60,29 @@ def train_classifier(
     epoch = 0
     loss_fn = torch.nn.CrossEntropyLoss()
 
-    if tqdm_loader:
-        data_loader_train = tqdm(data_loader_train, desc="train_loader")
-        data_loader_val = tqdm(data_loader_val, desc="val_loader")
-
     history.append(
         eval_classifier(
             inpainting_classifier,
             epoch=epoch,
-            data_loaders={"train": data_loader_train, "val": data_loader_val},
+            data_loaders={
+                k: tqdm(v, f"Epoch {epoch}, test_{k}")
+                for (k, v) in {
+                    "train": data_loader_train,
+                    "val": data_loader_val,
+                }.items()
+            },
             device=device,
             metric_fns=dict(
                 cross_entropy=crossentropy_metric, accuracy=accuracy_metric
             ),
         )
     )
+    print(history[-1])
 
     for e in tqdm(range(1, n_epochs + 1), desc="Epoch"):
         inpainting_classifier.train()
 
-        for (X, J), Y in data_loader_train:
+        for (X, J), Y in tqdm(data_loader_train, f"Epoch {e}, train"):
             X, J, Y = [t.to(device) for t in [X, J, Y]]
             Y_pred, PMAD_pred = inpainting_classifier(X, J)
             loss = loss_fn(Y_pred, Y)
@@ -90,7 +93,13 @@ def train_classifier(
         eval_results = eval_classifier(
             inpainting_classifier,
             epoch=e,
-            data_loaders={"train": data_loader_train, "val": data_loader_val},
+            data_loaders={
+                k: tqdm(v, f"Epoch {e}, test_{k}")
+                for (k, v) in {
+                    "train": data_loader_train,
+                    "val": data_loader_val,
+                }.items()
+            },
             device=device,
             metric_fns=dict(
                 cross_entropy=crossentropy_metric, accuracy=accuracy_metric

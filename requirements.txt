@@ -5,3 +5,4 @@ torchvision
 tqdm==4.40.0
 pre-commit
 matplotlib
+dotted
