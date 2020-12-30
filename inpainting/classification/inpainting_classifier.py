@@ -3,8 +3,8 @@ from typing import Optional
 
 from torch import nn
 
-from custom_layers import ConVar
-from inpainters.inpainter import InpainterModule
+from inpainting.custom_layers import ConVar
+from inpainting.inpainters.inpainter import InpainterModule
 from inpainting.datasets.mask_coding import KNOWN
 
 
@@ -28,9 +28,8 @@ class InpaintingClassifier(nn.Module):
 
     def forward(self, X, J):
         t0 = time()
-        X_masked = X * (J == KNOWN)
         t1 = time()
-        P, M, A, D = self.inpainter(X_masked, J)
+        P, M, A, D = self.inpainter(X, J)
         t2 = time()
 
         b, c, h, w = X.shape
@@ -50,6 +49,8 @@ class InpaintingClassifier(nn.Module):
         convar_out = self.convar(X, J, P_r, M_r, A_r, D_r)
         t4 = time()
         classification_result = self.classifier(convar_out)
+        # classification_result = self.classifier(X)
+
         inpainting_result = (P, M, A, D)
         t5 = time()
 
@@ -65,9 +66,10 @@ class InpaintingClassifier(nn.Module):
 
 
 def get_classifier(in_channels: int = 32) -> nn.Module:
-    """A simple MNIST classifier"""
+    """A simple MNIST classifier (the first layer is ConVar)"""
     return nn.Sequential(
-        nn.Conv2d(in_channels, 32, 3, padding=1),
+        # nn.Conv2d(in_channels, 32, 3, padding=1),
+        # nn.Conv2d(1, 32, 3, padding=1),
         nn.ReLU(),
         nn.MaxPool2d(2),
         nn.Conv2d(32, 64, 3, padding=1),

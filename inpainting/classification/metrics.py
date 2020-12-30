@@ -1,4 +1,4 @@
-from collections import Callable
+from typing import Callable
 
 import torch
 from torch import nn

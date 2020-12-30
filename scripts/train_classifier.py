@@ -122,13 +122,13 @@ if args.inpainter_type == "dmfa":
     inpainter.load_state_dict(checkpoint["inpainter"])
 
 elif args.inpainter_type == "gt":
-    inpainter = inpainters_mocks.GroundTruthInpainter(a_width=args.num_factors)
+    inpainter = inpainters_mocks.GroundTruthInpainter()
 
 elif args.inpainter_type == "zero":
-    inpainter = inpainters_mocks.ZeroInpainter(a_width=args.num_factors)
+    inpainter = inpainters_mocks.ZeroInpainter()
 
 elif args.inpainter_type == "noise":
-    inpainter = inpainters_mocks.ZeroInpainter(a_width=args.num_factors)
+    inpainter = inpainters_mocks.ZeroInpainter()
 
 else:
     raise RuntimeError(f"Unknown inpainter type: {args.inpainter_type}!")

@@ -1,6 +1,7 @@
 cached-property==1.5.1
 torch>=1.5
 torch-optimizer==0.0.1a11
-torchvision==0.6.0
+torchvision
 tqdm==4.40.0
-
+pre-commit
+matplotlib

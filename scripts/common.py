@@ -1,8 +1,8 @@
 """Script utilities"""
 from typing import Union
 
-from inpainters.fullconv import FullyConvolutionalInpainter
-from inpainters.linear_heads import LinearHeadsInpainter
+from inpainting.inpainters.fullconv import FullyConvolutionalInpainter
+from inpainting.inpainters.linear_heads import LinearHeadsInpainter
 from inpainting import backbones as bkb
 
 

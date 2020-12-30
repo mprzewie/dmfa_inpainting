@@ -6,8 +6,8 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from classification.inpainting_classifier import InpaintingClassifier
-from classification.metrics import crossentropy_metric, accuracy_metric
+from inpainting.classification.inpainting_classifier import InpaintingClassifier
+from inpainting.classification.metrics import crossentropy_metric, accuracy_metric
 
 
 def eval_classifier(
