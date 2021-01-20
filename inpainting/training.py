@@ -59,7 +59,6 @@ def train_step(
     return loss.item()
 
 
-
 def train_inpainter(
     inpainter: InpainterModule,
     data_loader_train: DataLoader,
@@ -110,9 +109,6 @@ def train_inpainter(
     losses_to_log["objective"] = loss_fn
 
     inpainter = inpainter.to(device)
-    if tqdm_loader:
-        data_loader_train = tqdm(data_loader_train, desc="train_loader")
-        data_loader_val = tqdm(data_loader_val, desc="val_loader")
 
     history = (
         history
@@ -132,7 +128,7 @@ def train_inpainter(
     for e in tqdm(range(epoch, n_epochs + epoch), desc="Epoch"):
         inpainter.train()
 
-        for ((x, j), y) in data_loader_train:
+        for ((x, j), y) in tqdm(data_loader_train, desc=f"Epoch {e}, train"):
             x, j = [t.to(device) for t in [x, j]]
             loss = train_step(x, j, inpainter, loss_fn, optimizer, scheduler)
             if np.isnan(loss):
@@ -141,7 +137,10 @@ def train_inpainter(
         history_elem = eval_inpainter(
             inpainter,
             epoch=e,
-            data_loaders={"train": data_loader_train, "val": data_loader_val},
+            data_loaders={
+                "train": tqdm(data_loader_train, desc=f"Epoch {e}, test_train"),
+                "val": tqdm(data_loader_val, desc=f"Epoch {e}, test_val"),
+            },
             device=device,
             losses_to_log=losses_to_log,
             max_benchmark_batches=max_benchmark_batches,

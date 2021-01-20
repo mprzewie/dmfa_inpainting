@@ -89,6 +89,31 @@ class ConVar(nn.Module):
             self.conv((X * (J == mc.KNOWN)))
         )  # known data are simply passed through a convolution
 
-        return (X_known_conv_relu * (J == mc.KNOWN)) + (
-            exp_relu_weighted_mean * (J != mc.KNOWN)
+        return (X_known_conv_relu * (J[:, :1] == mc.KNOWN)) + (
+            exp_relu_weighted_mean * (J[:, :1] != mc.KNOWN)
         )
+
+
+class ConVarNaive(nn.Module):
+    def __init__(self, conv_layer: nn.Conv2d):
+        super().__init__()
+        self.conv = conv_layer
+
+    def forward(self, X, J, P, M, A, D):
+        """
+        X: b,c,h,w
+        J: b,c,h,w
+        P: b,n
+        M: b,n,c,h,w
+        A: b,n,l,c,h,w
+        D: b,n,c,h,w
+        """
+
+        from time import time
+
+        b, n, l, c, h, w = A.shape
+
+        oc = self.conv.out_channels
+
+        X_inp = (X * (J == mc.KNOWN)) + (M.mean(dim=1) * (J != mc.KNOWN))
+        return nn.functional.relu(self.conv(X_inp))

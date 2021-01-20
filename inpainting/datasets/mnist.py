@@ -33,11 +33,9 @@ def train_val_datasets(
             tr.Lambda(
                 random_mask_fn(
                     mask_configs=[
-                        m
-                        for m in mask_configs
-                        if m.value in [UNKNOWN_LOSS, KNOWN]
+                        m for m in mask_configs if m.value in [UNKNOWN_LOSS, KNOWN]
                     ],  # only the mask which will be inpainted
-                    deterministic=True,
+                    deterministic=False,
                 )
             ),
         ]

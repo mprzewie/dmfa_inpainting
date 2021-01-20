@@ -17,7 +17,7 @@ def dmfa_from_args(args) -> Union[FullyConvolutionalInpainter, LinearHeadsInpain
         inpainter = FullyConvolutionalInpainter(
             a_width=args.num_factors,
             a_amplitude=args.a_amplitude,
-            c_h_w=(img_channels, args.img_size, args.simg_size),
+            c_h_w=(img_channels, args.img_size, args.img_size),
             last_channels=args.bkb_lc,
             extractor=bkb.down_up_backbone(
                 (img_channels * 2, args.img_size, args.img_size),

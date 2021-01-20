@@ -11,34 +11,40 @@ from inpainting.datasets.utils import RandomRectangleMaskConfig
 DEFAULT_MASK_CONFIGS = (
     RandomRectangleMaskConfig(
         UNKNOWN_LOSS,
-        15,15, 0,0,
+        15,
+        15,
+        0,
+        0,
     ),
-    RandomRectangleMaskConfig(
-        UNKNOWN_NO_LOSS,
-        15,15,2,2
-    )
+    RandomRectangleMaskConfig(UNKNOWN_NO_LOSS, 15, 15, 2, 2),
 )
 
 
 def train_val_datasets(
-        save_path: Path,
-        mask_configs: Sequence[RandomRectangleMaskConfig] = DEFAULT_MASK_CONFIGS,
+    save_path: Path,
+    mask_configs: Sequence[RandomRectangleMaskConfig] = DEFAULT_MASK_CONFIGS,
+    resize_size: Tuple[int, int] = (32, 32),
 ) -> Tuple[SVHN, SVHN]:
-    train_transform = tr.Compose([
-        tr.ToTensor(),
-        tr.Lambda(random_mask_fn(
-            mask_configs=mask_configs
-        ))
-    ])
-    
-    val_transform = tr.Compose([
-        tr.ToTensor(),
-        tr.Lambda(random_mask_fn(
-            mask_configs=[
-                m for m in mask_configs if m.value == UNKNOWN_LOSS
-            ]  # only the mask which will be inpainted
-        ))
-    ])
+    train_transform = tr.Compose(
+        [
+            tr.Resize(resize_size),
+            tr.ToTensor(),
+            tr.Lambda(random_mask_fn(mask_configs=mask_configs)),
+        ]
+    )
+
+    val_transform = tr.Compose(
+        [
+            tr.ToTensor(),
+            tr.Lambda(
+                random_mask_fn(
+                    mask_configs=[
+                        m for m in mask_configs if m.value == UNKNOWN_LOSS
+                    ]  # only the mask which will be inpainted
+                )
+            ),
+        ]
+    )
 
     ds_train = SVHN(save_path, split="train", download=True, transform=train_transform)
     ds_val = SVHN(save_path, split="test", download=True, transform=val_transform)

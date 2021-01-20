@@ -46,7 +46,11 @@ class InpaintingClassifier(nn.Module):
 
         t3 = time()
 
+        # print([t.shape for t in [X, J, P_r, M_r, A_r, D_r]])
+        # print(self.convar)
+
         convar_out = self.convar(X, J, P_r, M_r, A_r, D_r)
+
         t4 = time()
         classification_result = self.classifier(convar_out)
         # classification_result = self.classifier(X)
@@ -62,21 +66,24 @@ class InpaintingClassifier(nn.Module):
         clas = t5 - t4
         times = [prep, inp, resh, convar, clas]
 
-        return classification_result, inpainting_result
+        return classification_result, (inpainting_result, convar_out)
 
 
-def get_classifier(in_channels: int = 32) -> nn.Module:
-    """A simple MNIST classifier (the first layer is ConVar)"""
+def get_classifier(
+    in_channels: int = 32, in_height: int = 28, in_width: int = 28, n_classes: int = 10
+) -> nn.Module:
+    """A simple classifier (the first layer is ConVar)"""
+    conv_out_chan = 64
+    lin_in_shape = (in_height // 4) * (in_width // 4) * conv_out_chan
+
     return nn.Sequential(
-        # nn.Conv2d(in_channels, 32, 3, padding=1),
-        # nn.Conv2d(1, 32, 3, padding=1),
         nn.ReLU(),
         nn.MaxPool2d(2),
-        nn.Conv2d(32, 64, 3, padding=1),
+        nn.Conv2d(in_channels, 64, 3, padding=1),
         nn.ReLU(),
         nn.MaxPool2d(2),
         nn.Flatten(),
-        nn.Linear(7 * 7 * 64, 128),
+        nn.Linear(lin_in_shape, 128),
         nn.ReLU(),
-        nn.Linear(128, 10),
+        nn.Linear(128, n_classes),
     )

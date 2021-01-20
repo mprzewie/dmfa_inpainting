@@ -42,7 +42,7 @@ experiment_args.add_argument(
     dest="dump_sample_results",
     action="store_true",
     default=False,
-    help="Whether to dump predictions for the entire validation dataset with the final model after training.",
+    help="Whether to dump sample predictions of model throughout training",
 )
 
 data_args = parser.add_argument_group("Dataset")
@@ -51,7 +51,7 @@ data_args.add_argument(
     "--dataset",
     type=str,
     default="mnist",
-    choices=["mnist", "fashion_mnist", "celeba"],
+    choices=["mnist", "fashion_mnist", "celeba", "svhn"],
     help="Dataset to experiment on.",
 )
 data_args.add_argument(
