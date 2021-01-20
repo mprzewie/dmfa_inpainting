@@ -1,0 +1,1 @@
+python train_classifier.py --experiment_name=exp_more_visualizations/inp_mfa_pretrained_inpainter_trained --inpainter_type=mfa --inpainter_path ../../gmm_missing/models/mnist_28_28/ --train_inpainter_layer --num_epochs=10 --lr=1e-3 --dump_sample_results --render_every 3

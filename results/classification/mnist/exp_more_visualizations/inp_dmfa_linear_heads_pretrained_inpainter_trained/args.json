@@ -1,0 +1,22 @@
+{
+  "experiment_name": "exp_more_visualizations/inp_dmfa_linear_heads_pretrained_inpainter_trained",
+  "max_benchmark_batches": 200,
+  "render_every": 3,
+  "dump_val_predictions": false,
+  "dump_sample_results": true,
+  "dataset": "mnist",
+  "img_size": 28,
+  "mask_hidden_h": 14,
+  "mask_hidden_w": 14,
+  "batch_size": 24,
+  "lr": 0.001,
+  "num_epochs": 10,
+  "device": "cuda:0",
+  "dataset_root": "/home/mprzewiezlikowski/uj/.data",
+  "convar_type": "full",
+  "seed": false,
+  "train_inpainter_layer": true,
+  "results_dir": "../results/classification",
+  "inpainter_type": "dmfa",
+  "inpainter_path": "../results/inpainting/mnist/mgr_sanity_check_v1"
+}

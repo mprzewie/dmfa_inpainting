@@ -1,0 +1,1 @@
+python train_classifier.py --experiment_name=convar_vis/inp_dmfa --num_epochs=0 --lr=1e-3 --inpainter_path ../results/inpainting/mnist/mgr_sanity_check_v1/ --convar_type full --inpainter_type dmfa --dump_sample_results

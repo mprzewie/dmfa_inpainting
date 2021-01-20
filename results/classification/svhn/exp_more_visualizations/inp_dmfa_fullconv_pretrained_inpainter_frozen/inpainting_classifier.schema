@@ -1,0 +1,101 @@
+InpaintingClassifier(
+  (inpainter): FullyConvolutionalInpainter(
+    (extractor): Sequential(
+      (0): Sequential(
+        (0): Conv2d(6, 32, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
+        (1): ReLU()
+        (2): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+      (1): Conv2d(32, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+      (2): Sequential(
+        (0): Conv2d(32, 64, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
+        (1): ReLU()
+        (2): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+      (3): Sequential(
+        (0): Conv2d(64, 64, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
+        (1): ReLU()
+        (2): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+      (4): Conv2d(64, 64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+      (5): Sequential(
+        (0): Conv2d(64, 128, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
+        (1): ReLU()
+        (2): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+      (6): Sequential(
+        (0): Conv2d(128, 128, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
+        (1): ReLU()
+        (2): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+      (7): Conv2d(128, 128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+      (8): ConvTranspose2d(128, 128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), output_padding=(1, 1))
+      (9): Sequential(
+        (0): Conv2d(128, 128, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
+        (1): ReLU()
+        (2): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+      (10): Sequential(
+        (0): Conv2d(128, 64, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
+        (1): ReLU()
+        (2): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+      (11): ConvTranspose2d(64, 64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), output_padding=(1, 1))
+      (12): Sequential(
+        (0): Conv2d(64, 64, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
+        (1): ReLU()
+        (2): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+      (13): Sequential(
+        (0): Conv2d(64, 32, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
+        (1): ReLU()
+        (2): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+      (14): ConvTranspose2d(32, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), output_padding=(1, 1))
+      (15): Sequential(
+        (0): Conv2d(32, 32, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
+        (1): ReLU()
+        (2): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+    )
+    (a_extractor): Sequential(
+      (0): Conv2d(32, 16, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
+      (1): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (2): Conv2d(16, 12, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (3): Reshape(out_size=(-1, 1, 4, 3072))
+      (4): LambdaLayer()
+    )
+    (m_extractor): Sequential(
+      (0): Conv2d(32, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (2): ReLU()
+      (3): Conv2d(16, 3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (4): Reshape(out_size=(-1, 1, 3072))
+      (5): LambdaLayer()
+    )
+    (d_extractor): Sequential(
+      (0): Conv2d(32, 3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): Reshape(out_size=(-1, 1, 3072))
+      (2): LambdaLayer()
+    )
+    (p_extractor): Sequential(
+      (0): Conv2d(32, 1, kernel_size=(32, 32), stride=(1, 1))
+      (1): Reshape(out_size=(-1, 1))
+      (2): Softmax(dim=None)
+    )
+  )
+  (convar): ConVar(
+    (conv): Conv2d(3, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+  )
+  (classifier): Sequential(
+    (0): ReLU()
+    (1): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    (2): Conv2d(32, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (3): ReLU()
+    (4): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    (5): Flatten(start_dim=1, end_dim=-1)
+    (6): Linear(in_features=4096, out_features=128, bias=True)
+    (7): ReLU()
+    (8): Linear(in_features=128, out_features=10, bias=True)
+  )
+)

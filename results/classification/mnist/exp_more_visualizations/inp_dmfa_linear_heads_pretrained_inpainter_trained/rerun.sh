@@ -1,0 +1,1 @@
+python train_classifier.py --experiment_name=exp_more_visualizations/inp_dmfa_linear_heads_pretrained_inpainter_trained --inpainter_type=dmfa --inpainter_path ../results/inpainting/mnist/mgr_sanity_check_v1/ --train_inpainter_layer --num_epochs=10 --lr=1e-3 --dump_sample_results --render_every 3
