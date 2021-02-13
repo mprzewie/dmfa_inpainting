@@ -51,7 +51,7 @@ data_args.add_argument(
     "--dataset",
     type=str,
     default="mnist",
-    choices=["mnist", "fashion_mnist", "celeba", "svhn"],
+    choices=["mnist", "fashion_mnist", "celeba", "svhn", "cifar10"],
     help="Dataset to experiment on.",
 )
 data_args.add_argument(

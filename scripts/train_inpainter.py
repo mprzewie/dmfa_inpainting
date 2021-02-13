@@ -24,6 +24,8 @@ from inpainting.visualizations.stats import plot_arrays_stats
 from inpainting.datasets.celeba import train_val_datasets as celeba_train_val_ds
 from inpainting.datasets.mnist import train_val_datasets as mnist_train_val_ds
 from inpainting.datasets.svhn import train_val_datasets as svhn_train_val_ds
+from inpainting.datasets.cifar import train_val_datasets as cifar_train_val_ds
+
 from inpainting.datasets.mask_coding import UNKNOWN_LOSS
 from inpainting.datasets.utils import RandomRectangleMaskConfig
 from inpainting.visualizations.digits import img_with_mask
@@ -170,6 +172,14 @@ elif args.dataset == "svhn":
         ],
         resize_size=(img_size, img_size),
     )
+elif args.dataset == "cifar10":
+    ds_train, ds_val = cifar_train_val_ds(
+        save_path=Path(args.dataset_root),
+        mask_configs=[
+            RandomRectangleMaskConfig(UNKNOWN_LOSS, mask_hidden_h, mask_hidden_w)
+        ],
+        resize_size=(img_size, img_size),
+    )
 else:
     raise ValueError(f"Unknown dataset {args.dataset}")
 
@@ -203,6 +213,7 @@ a_variance = lambda x, j, p, m, a, d: a.var()
 
 # instantiate the inpainter model
 inpainter = dmfa_from_args(args)
+# print(inpainter)
 
 inpainter.train()
 

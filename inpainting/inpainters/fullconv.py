@@ -72,7 +72,6 @@ class FullyConvolutionalInpainter(InpainterModule):
         J = J * (J == KNOWN)
         X_masked = X * J
         X_J = torch.cat([X_masked, J], dim=1)
-
         features = self.extractor(X_J)
 
         m = self.m_extractor(features)
