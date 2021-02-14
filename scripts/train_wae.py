@@ -88,6 +88,38 @@ inpainter_args.add_argument(
     default=None,
 )
 
+wae_args = parser.add_argument_group("WAE model")
+
+wae_args.add_argument(
+    "--wae_depth",
+    type=int,
+    help="Number of conv-relu-batchnorm blocks in fully convolutional WAE",
+)
+
+wae_args.add_argument(
+    "--wae_bl",
+    type=int,
+    default=1,
+    help="Number of repetitions of conv-relu-batchnorm sequence in fully convolutional WAE.",
+)
+
+wae_args.add_argument(
+    "--wae_fc",
+    type=int,
+    default=32,
+    help="Number of channels in the first convolution of WAE encoder",
+)
+
+wae_args.add_argument(
+    "--wae_lc",
+    type=int,
+    default=32,
+    help="Number of channels in the last convolution of WAE decoder",
+)
+
+wae_args.add_argument(
+    "--wae_disc_hidden", type=int, default=64, help="Hidden size of WAE discriminator",
+)
 args = parser.parse_args()
 
 if args.inpainter_type in ["gt", "noise", "zero"]:
@@ -183,7 +215,7 @@ dec_final_conv = nn.Conv2d(
     args.wae_lc, out_channels=convar_in_channels, kernel_size=3, padding=1
 )
 wae_encoder = nn.Sequential(enc_down, enc_latent)
-wae_decoder = nn.Sequential(dec, dec_final_conv)
+wae_decoder = nn.Sequential(dec, dec_final_conv, nn.Sigmoid())
 
 if args.inpainter_type == "dmfa":
     print(f"Loading DMFA inpainter from {args.inpainter_path}")
