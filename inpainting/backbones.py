@@ -141,7 +141,7 @@ def down_up_backbone(
     last_channels: int = 1,
     kernel_size: int = 3,
     latent: bool = True,
-) -> nn.Module:
+) -> Tuple[nn.Module, ...]:
     c, h, w = chw
     down = [
         conv_relu_bn(c, first_channels, kernel_size=kernel_size),
@@ -218,5 +218,4 @@ def down_up_backbone(
         else []
     )
 
-    modules = down + latent_modules + up
-    return nn.Sequential(*modules)
+    return nn.Sequential(*down), nn.Sequential(*latent_modules), nn.Sequential(*up)

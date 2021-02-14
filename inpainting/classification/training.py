@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 from inpainting.classification.inpainting_classifier import InpaintingClassifier
 from inpainting.classification.metrics import crossentropy_metric, accuracy_metric
+from utils import printable_history
 
 
 def eval_classifier(
@@ -72,7 +73,6 @@ def train_classifier(
     optimizer: Optimizer,
     n_epochs: int,
     device: torch.device,
-    tqdm_loader: bool = True,
 ) -> List[dict]:
     history = []
     epoch = 0
@@ -121,9 +121,3 @@ def train_classifier(
         print(printable_history([eval_results])[-1])
 
     return history
-
-
-def printable_history(history: List[Dict]) -> List[Dict]:
-    return [
-        {k: v for (k, v) in h.items() if k not in ["sample_results"]} for h in history
-    ]

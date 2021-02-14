@@ -5,7 +5,6 @@ from torch import nn
 
 from inpainting.custom_layers import ConVar
 from inpainting.inpainters.inpainter import InpainterModule
-from inpainting.datasets.mask_coding import KNOWN
 
 
 class InpaintingClassifier(nn.Module):
@@ -45,9 +44,6 @@ class InpaintingClassifier(nn.Module):
             P_r, M_r, A_r, D_r = [t.detach() for t in [P_r, M_r, A_r, D_r]]
 
         t3 = time()
-
-        # print([t.shape for t in [X, J, P_r, M_r, A_r, D_r]])
-        # print(self.convar)
 
         convar_out = self.convar(X, J, P_r, M_r, A_r, D_r)
 

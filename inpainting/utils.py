@@ -1,13 +1,16 @@
-from typing import Dict, Tuple, List
+import json
+from pathlib import Path
+from typing import Tuple, List, Dict
 
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from sklearn.neural_network import MLPClassifier
 from torch.utils.data.dataloader import DataLoader
 from tqdm import tqdm
 
 from inpainting.datasets.mask_coding import UNKNOWN_LOSS
 from inpainting.inpainters.inpainter import InpainterModule
-from sklearn.neural_network import MLPClassifier
 
 
 def inpainted(x: np.ndarray, j: np.ndarray, m: np.ndarray):
@@ -58,3 +61,43 @@ def predictions_for_entire_loader(
 
             # print([t.shape for t in (x_, j_, p_, m_, a_, d_,)])
     return results
+
+
+# control which parameters are frozen / free for optimization
+def free_params(module: torch.nn.Module):
+    for p in module.parameters():
+        p.requires_grad = True
+
+
+def freeze_params(module: torch.nn.Module):
+    for p in module.parameters():
+        p.requires_grad = False
+
+
+def printable_history(history: List[Dict]) -> List[Dict]:
+    return [
+        {k: v for (k, v) in h.items() if k not in ["sample_results"]} for h in history
+    ]
+
+
+def dump_history(history: List[Dict], experiment_path: Path):
+    with (experiment_path / "history.json").open("w") as f:
+        json.dump(printable_history(history), f, indent=2)
+
+    for metric_name in set(history[0]["metrics"].keys()):
+        for fold in ["train", "val"]:
+            plt.plot(
+                [h["epoch"] for h in history],
+                [h["metrics"][metric_name][fold] for h in history],
+                label=fold,
+            )
+        plt.title(metric_name)
+        plt.legend()
+        fig = plt.gcf()
+        fig.savefig(
+            experiment_path / f"history.{metric_name}.png",
+            bbox_inches="tight",
+            pad_inches=0,
+        )
+        plt.show()
+        plt.clf()

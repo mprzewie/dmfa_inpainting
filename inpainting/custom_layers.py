@@ -1,10 +1,11 @@
-import torch
-
-from torch import nn
-from typing import Callable
-from inpainting.datasets import mask_coding as mc
-import numpy as np
 import copy
+from typing import Callable
+
+import numpy as np
+import torch
+from torch import nn
+
+from inpainting.datasets import mask_coding as mc
 
 
 class Reshape(nn.Module):
@@ -41,7 +42,7 @@ class ConVar(nn.Module):
         conv_sq.bias = nn.Parameter(self.conv.bias ** 2)
         return conv_sq
 
-    def forward(self, X, J, P, M, A, D):
+    def forward(self, X, J, P, M, A, D) -> torch.Tensor:
         """
         X: b,c,h,w
         J: b,c,h,w
@@ -50,8 +51,6 @@ class ConVar(nn.Module):
         A: b,n,l,c,h,w
         D: b,n,c,h,w
         """
-
-        from time import time
 
         b, n, l, c, h, w = A.shape
 
@@ -108,8 +107,6 @@ class ConVarNaive(nn.Module):
         A: b,n,l,c,h,w
         D: b,n,c,h,w
         """
-
-        from time import time
 
         b, n, l, c, h, w = A.shape
 
