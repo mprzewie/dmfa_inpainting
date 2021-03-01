@@ -36,8 +36,8 @@ import inpainting.visualizations.visualizations_utils as vis
 
 from dotted.utils import dot
 import numpy as np
-
 import matplotlib
+from datetime import datetime
 
 matplotlib.rcParams["figure.facecolor"] = "white"
 
@@ -132,6 +132,7 @@ with (experiment_path / "args.json").open("w") as f:
     )
 
 with (experiment_path / "rerun.sh").open("w") as f:
+    print("#", datetime.now())
     print("python", *sys.argv, file=f)
 
 img_size = args.img_size
@@ -316,7 +317,12 @@ if args.dump_sample_results:
             n_rows, n_cols = convar_out.shape[:2]
 
             fig, axes = plt.subplots(
-                n_rows, n_cols, figsize=(n_cols // 2, n_rows // 2,),
+                n_rows,
+                n_cols,
+                figsize=(
+                    n_cols // 2,
+                    n_rows // 2,
+                ),
             )
             for i, row in enumerate(convar_out):
                 for j, img in enumerate(row):

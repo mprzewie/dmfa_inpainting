@@ -2,8 +2,6 @@
 # coding: utf-8
 import sys
 
-from generative.wae import InpaintingWAE, get_discriminator, train_wae
-
 sys.path.append("..")
 
 from pprint import pprint
@@ -25,12 +23,16 @@ from inpainting.datasets.mask_coding import UNKNOWN_LOSS
 from inpainting.datasets.utils import RandomRectangleMaskConfig
 from inpainting.datasets.mnist import train_val_datasets as mnist_train_val_ds
 from inpainting.datasets.svhn import train_val_datasets as svhn_train_val_ds
+from inpainting.datasets.celeba import train_val_datasets as celeba_train_val_ds
 from inpainting.visualizations.digits import img_with_mask
 from inpainting.custom_layers import ConVar, ConVarNaive
 from inpainting.inpainters import mocks as inpainters_mocks
-from utils import printable_history, dump_history
+from inpainting.utils import printable_history, dump_history
 import inpainting.visualizations.visualizations_utils as vis
 import inpainting.backbones as bkb
+from inpainting.generative.wae import InpaintingWAE, get_discriminator, train_wae
+from torch.nn import BCELoss, MSELoss
+from datetime import datetime
 from dotted.utils import dot
 import numpy as np
 
@@ -91,8 +93,16 @@ inpainter_args.add_argument(
 wae_args = parser.add_argument_group("WAE model")
 
 wae_args.add_argument(
+    "--convar_channels",
+    type=int,
+    default=32,
+    help="N of output channels of convar layer",
+)
+
+wae_args.add_argument(
     "--wae_depth",
     type=int,
+    default=2,
     help="Number of conv-relu-batchnorm blocks in fully convolutional WAE",
 )
 
@@ -118,7 +128,25 @@ wae_args.add_argument(
 )
 
 wae_args.add_argument(
-    "--wae_disc_hidden", type=int, default=64, help="Hidden size of WAE discriminator",
+    "--wae_disc_hidden",
+    type=int,
+    default=64,
+    help="Hidden size of WAE discriminator",
+)
+
+wae_args.add_argument(
+    "--wae_disc_loss_weight",
+    type=float,
+    default=0.01,
+    help="Weight of discriminator loss",
+)
+
+wae_args.add_argument(
+    "--wae_recon_loss",
+    type=str,
+    default="bce",
+    choices=["bce", "mse"],
+    help="BCE for MNIST, MSE for others?",
 )
 args = parser.parse_args()
 
@@ -148,6 +176,10 @@ with (experiment_path / "args.json").open("w") as f:
         indent=2,
     )
 
+with (experiment_path / "rerun.sh").open("w") as f:
+    print("#", datetime.now(), file=f)
+    print("python", *sys.argv, file=f)
+
 img_size = args.img_size
 mask_hidden_h = args.mask_hidden_h
 mask_hidden_w = args.mask_hidden_w
@@ -169,6 +201,18 @@ elif args.dataset == "svhn":
         ],
         resize_size=(img_size, img_size),
     )
+elif args.dataset == "celeba":
+    img_to_crop = 1.875
+    # celebA images are cropped to contain only the faces, which are assumed to be in images' centers
+    full_img_size = int(img_size * img_to_crop)
+    ds_train, ds_val = celeba_train_val_ds(
+        save_path=Path(args.dataset_root),
+        mask_configs=[
+            RandomRectangleMaskConfig(UNKNOWN_LOSS, mask_hidden_h, mask_hidden_w)
+        ],
+        resize_size=(full_img_size, full_img_size),
+        crop_size=(img_size, img_size),
+    )
 else:
     raise ValueError(f"Unknown dataset {args.dataset}.")
 
@@ -186,9 +230,9 @@ print("dataset sizes", len(ds_train), len(ds_val))
 
 dl_train = DataLoader(ds_train, args.batch_size, shuffle=True)
 dl_train_val = DataLoader(
-    ds_train, 16, shuffle=False
+    ds_train, 128, shuffle=False
 )  # used for validation on training DS
-dl_val = DataLoader(ds_val, 16, shuffle=False)
+dl_val = DataLoader(ds_val, 128, shuffle=False)
 
 convar_in_channels = 1 if "mnist" in args.dataset else 3
 convar_out_channels = args.convar_channels
@@ -200,7 +244,7 @@ convar = (
     )
 )
 
-img_shape = 28 if "mnist" in args.dataset else 32
+img_shape = args.img_size
 
 enc_down, enc_latent, dec = bkb.down_up_backbone(
     chw=(convar_out_channels, img_shape, img_shape),
@@ -258,7 +302,22 @@ wae = InpaintingWAE(
     discriminator=get_discriminator(
         in_size=discriminator_in_size, hidden_size=args.wae_disc_hidden
     ),
+    keep_inpainting_gradient=args.train_inpainter_layer,
 )
+
+print(
+    {
+        k: f"{sum(p.numel() for p in model.parameters())} parameters"
+        for (k, model) in [
+            ("entire model", wae),
+            ("inpainter", wae.inpainter),
+            ("encoder", wae.encoder),
+            ("decoder", wae.decoder),
+            ("discriminator", wae.discriminator),
+        ]
+    }
+)
+wae = wae.to(device)
 
 optimizer = torch.optim.Adam(wae.parameters(), lr=args.lr)
 # save schemas of the inpainter and optimizer
@@ -268,7 +327,7 @@ with (experiment_path / "inpainting_wae.schema").open("w") as f:
 with (experiment_path / "opt.schema").open("w") as f:
     print(optimizer, file=f)
 
-
+recon_loss = BCELoss() if args.wae_recon_loss == "bce" else MSELoss()
 history = train_wae(
     wae=wae,
     data_loader_train=dl_train,
@@ -276,6 +335,11 @@ history = train_wae(
     optimizer=optimizer,
     n_epochs=args.num_epochs,
     device=device,
+    max_benchmark_batches=args.max_benchmark_batches,
+    discriminator_loss_fn=BCELoss(
+        weight=torch.tensor(args.wae_disc_loss_weight).float().to(device)
+    ),
+    reconstruction_loss_fn=recon_loss,
 )
 
 pprint(printable_history(history))
@@ -283,15 +347,74 @@ pprint(printable_history(history))
 dump_history(history, experiment_path)
 
 # TODO turn this into functions
-if args.dump_sample_results:
+if args.render_every > 0:
+
+    row_length = (
+        vis.row_length(
+            *[
+                history[0]["sample_results"]["train"][t_name][0]
+                for t_name in ["X", "J", "P", "M", "A", "D", "Y"]
+            ]
+        )
+        + 1
+    )
+    last_epoch = max(h["epoch"] for h in history)
+
+    fig, axes = plt.subplots(
+        len(
+            [
+                h
+                for h in history
+                if (h["epoch"] % args.render_every) == 0 or h["epoch"] == last_epoch
+            ]
+        )
+        * 2,
+        row_length,
+        figsize=(20, 30),
+    )
+    row_no = 0
+    for h in tqdm(history):
+
+        e = h["epoch"]
+        if e % args.render_every != 0 and e != last_epoch:
+            continue
+
+        for ax_no, fold in [(0, "train"), (1, "val")]:
+            x, j, p, m, a, d, y, decoder_out = [
+                h["sample_results"][fold][k][0]
+                for k in ["X", "J", "P", "M", "A", "D", "Y", "decoder_out"]
+            ]
+            vis.visualize_sample(
+                x,
+                j,
+                p,
+                m,
+                a,
+                d,
+                y,
+                ax_row=axes[row_no],
+                title_prefixes={0: f"{e} {fold} "},
+                drawing_fn=img_with_mask,
+            )
+
+            dec_out = (
+                decoder_out.reshape(img_shape, img_shape)
+                if convar_in_channels == 1
+                else decoder_out.transpose(1, 2, 0)
+            )
+            axes[row_no][-1].imshow(dec_out)
+
+            row_no += 1
+
+    epochs_fig = plt.gcf()
+    epochs_fig.savefig(experiment_path / "epochs_renders.png")
+
     epochs_path = experiment_path / "epochs"
     if epochs_path.exists():
         shutil.rmtree(epochs_path)
     epochs_path.mkdir()
 
     n_rows = 16
-
-    last_epoch = max(h["epoch"] for h in history)
 
     for h in tqdm(history):
         e = h["epoch"]
@@ -303,9 +426,19 @@ if args.dump_sample_results:
             sample_results = h["sample_results"][fold]
 
             # sample results visualization
-            X, J, P, M, A, D, Y, decoder_out = [
-                sample_results[k]
-                for k in ["X", "J", "P", "M", "A", "D", "Y", "decoder_out"]
+            X, J, P, M, A, D, Y, decoder_out, convar_out = [
+                sample_results[k][:n_rows]
+                for k in [
+                    "X",
+                    "J",
+                    "P",
+                    "M",
+                    "A",
+                    "D",
+                    "Y",
+                    "decoder_out",
+                    "convar_out",
+                ]
             ]
 
             row_length = vis.row_length(*[t[0] for t in [X, J, P, M, A, D, Y]]) + 1
@@ -328,8 +461,38 @@ if args.dump_sample_results:
                     title_prefixes={0: f"{e} {fold} ", 1: f"gt {y}"},
                     drawing_fn=img_with_mask,
                 )
+                dec_out = (
+                    dec_out.reshape(img_shape, img_shape)
+                    if convar_in_channels == 1
+                    else dec_out.transpose(1, 2, 0)
+                )
+
                 axes[row_no][-1].imshow(dec_out)
 
             title = f"{e}_{fold}_predictions"
             plt.suptitle(title)
             plt.savefig(epochs_path / f"{title}.png", bbox_inches="tight", pad_inches=0)
+
+            # convar out visualization
+
+            n_rows, n_cols = convar_out.shape[:2]
+
+            fig, axes = plt.subplots(
+                n_rows,
+                n_cols,
+                figsize=(
+                    n_cols // 2,
+                    n_rows // 2,
+                ),
+            )
+            for i, row in enumerate(convar_out):
+                for j, img in enumerate(row):
+                    ax = axes[i, j]
+                    ax.imshow(img)
+                    ax.axis("off")
+
+            plt.savefig(
+                epochs_path / f"{e}_{fold}_convar.png",
+                bbox_inches="tight",
+                pad_inches=0,
+            )

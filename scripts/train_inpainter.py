@@ -39,6 +39,7 @@ matplotlib.rcParams["figure.facecolor"] = "white"
 
 from common_args import parser, training_args, environment_args
 from common import dmfa_from_args
+from datetime import datetime
 
 training_args.add_argument(
     "--l_nll_weight", type=float, default=1, help="Weight of NLL in the training loss."
@@ -135,7 +136,8 @@ with (experiment_path / "args.json").open("w") as f:
         indent=2,
     )
 
-with (experiment_path / "rerun.sh").open("w") as f:
+with (experiment_path / "rerun.sh").open("a") as f:
+    print("#", datetime.now(), file=f)
     print("python", *sys.argv, file=f)
 
 

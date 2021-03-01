@@ -133,6 +133,81 @@ def conv_relu_bn(
     )
 
 
+def down_up_backbone_v2(
+    chw: Tuple[int, int, int],
+    depth: int,
+    block_length: int = 1,
+    first_channels: int = 16,
+    last_channels: int = 1,
+    kernel_size: int = 3,
+    latent: bool = True,
+) -> Tuple[nn.Module, ...]:
+    c, h, w = chw
+    down = [nn.Conv2d(c, first_channels, kernel_size=3, padding=1)]
+
+    up = [nn.Conv2d(last_channels, last_channels, kernel_size=3, padding=1)]
+    for i in range(depth):
+        for j in range(block_length):
+            down = down + [
+                conv_relu_bn(
+                    first_channels * (2 ** (i - 1))
+                    if (j == 0 and i != 0)
+                    else first_channels * (2 ** i),
+                    first_channels * (2 ** i),
+                    kernel_size=kernel_size,
+                )
+            ]
+            up = [
+                conv_relu_bn(
+                    last_channels * (2 ** i),
+                    last_channels * (2 ** (i - 1))
+                    if (j == 0 and i != 0)
+                    else last_channels * (2 ** i),
+                    kernel_size=kernel_size,
+                )
+            ] + up
+
+        down = down + [
+            nn.Conv2d(
+                first_channels * (2 ** i),
+                first_channels * (2 ** i),
+                kernel_size=3,
+                padding=1,
+                stride=2,
+            )
+        ]
+
+        up = [
+            nn.ConvTranspose2d(
+                last_channels * (2 ** i),
+                last_channels * (2 ** i),
+                kernel_size=3,
+                padding=1,
+                stride=2,
+                output_padding=1,
+            )
+        ] + up
+
+    h_d = h // (2 ** depth)
+    w_d = w // (2 ** depth)
+    c_d_i = first_channels * (2 ** (depth - 1))
+    c_d_o = last_channels * (2 ** (depth - 1))
+
+    latent_modules = (
+        [
+            Reshape((-1, c_d_i * h_d * w_d)),
+            nn.ReLU(),
+            nn.Linear(c_d_i * h_d * w_d, c_d_o * h_d * w_d),
+            nn.ReLU(),
+            Reshape((-1, c_d_o, h_d, w_d)),
+        ]
+        if latent
+        else []
+    )
+
+    return nn.Sequential(*down), nn.Sequential(*latent_modules), nn.Sequential(*up)
+
+
 def down_up_backbone(
     chw: Tuple[int, int, int],
     depth: int,
@@ -144,6 +219,7 @@ def down_up_backbone(
 ) -> Tuple[nn.Module, ...]:
     c, h, w = chw
     down = [
+        # nn.Conv2d(c, first_channels, kernel_size=3, padding=1)
         conv_relu_bn(c, first_channels, kernel_size=kernel_size),
         nn.Conv2d(first_channels, first_channels, kernel_size=3, padding=1, stride=2),
     ]

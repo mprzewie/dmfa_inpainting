@@ -13,9 +13,10 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from typing_extensions import Protocol
 
-from custom_layers import ConVar
-from inpainters.inpainter import InpainterModule
-from utils import freeze_params, free_params, printable_history
+from inpainting.custom_layers import ConVar
+from inpainting.inpainters.inpainter import InpainterModule
+from inpainting.utils import freeze_params, free_params, printable_history
+from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 
 
 class InpaintingWAE(nn.Module):
@@ -90,6 +91,7 @@ def train_wae(
     optimizer: Optimizer,
     n_epochs: int,
     device: torch.device,
+    max_benchmark_batches: int,
     discriminator_loss_fn: BCELoss = BCELoss(),
     reconstruction_loss_fn: BCELoss = BCELoss(),
 ) -> List[dict]:
@@ -99,6 +101,8 @@ def train_wae(
         d_train_loss=discriminator_train_loss(discriminator_loss_fn),
         d_fool_loss=discriminator_fool_loss(discriminator_loss_fn),
         recon_loss=wae_reconstruction_loss(reconstruction_loss_fn),
+        psnr=psnr,
+        ssim=ssim,
     )
     history.append(
         eval_wae(
@@ -110,6 +114,7 @@ def train_wae(
             },
             device=device,
             metric_fns=metric_fns,
+            max_benchmark_batches=max_benchmark_batches,
         )
     )
     print(printable_history(history)[-1])
@@ -124,9 +129,10 @@ def train_wae(
             discriminator_loss_fn=discriminator_loss_fn,
             reconstruction_loss_fn=reconstruction_loss_fn,
             metric_fns=metric_fns,
+            max_benchmark_batches=max_benchmark_batches,
         )
-        print(printable_history(history)[-1])
         history.append(epoch_result)
+        print(printable_history(history)[-1])
     return history
 
 
@@ -140,6 +146,7 @@ def train_epoch(
     discriminator_loss_fn: BCELoss,
     reconstruction_loss_fn: BCELoss,
     metric_fns: Dict[str, WAEMetricFn],
+    max_benchmark_batches: int,
 ) -> dict:
     wae.train()
 
@@ -189,6 +196,7 @@ def train_epoch(
         },
         device=device,
         metric_fns=metric_fns,
+        max_benchmark_batches=max_benchmark_batches,
     )
 
 
@@ -198,6 +206,7 @@ def eval_wae(
     data_loaders: Dict[str, DataLoader],
     device: torch.device,
     metric_fns: Dict[str, WAEMetricFn],
+    max_benchmark_batches: int,
 ) -> dict:
     wae.eval()
     fold_metrics = dict()
@@ -206,6 +215,8 @@ def eval_wae(
     for fold, dl in data_loaders.items():
         metrics = []
         for i, ((X, J), Y) in enumerate(dl):
+            if i > max_benchmark_batches:
+                break
             X, J = [t.to(device) for t in [X, J]]
             (enc_out, dec_out), (d_true_out, d_fake_out), (PMAD_out, convar_out) = wae(
                 X, J
@@ -219,7 +230,12 @@ def eval_wae(
                 }
             )
             if i == 0:
-                P, M, A, D, = PMAD_out
+                (
+                    P,
+                    M,
+                    A,
+                    D,
+                ) = PMAD_out
                 preds = dict(
                     X=X,
                     J=J,
@@ -262,7 +278,8 @@ def discriminator_train_loss(l_fn: BCELoss) -> WAEMetricFn:
         y_true = [0] * len(d_true_out)
 
         d_y = torch.tensor(y_true + y_fake).float().to(d_true_out.device)
-        d_loss = l_fn(torch.cat([d_true_out, d_fake_out]), d_y)
+        d_out = torch.cat([d_true_out, d_fake_out])
+        d_loss = l_fn(d_out.reshape(-1), d_y)
         return d_loss
 
     return fn
@@ -275,7 +292,7 @@ def discriminator_fool_loss(l_fn: BCELoss) -> WAEMetricFn:
 
     def fn(X, J, enc_out, dec_out, d_true_out, d_fake_out):
         d_y = torch.tensor([1] * len(d_true_out)).float().to(d_true_out.device)
-        d_loss = l_fn(d_true_out, d_y)
+        d_loss = l_fn(d_true_out.reshape(-1), d_y)
         return d_loss
 
     return fn
@@ -284,7 +301,32 @@ def discriminator_fool_loss(l_fn: BCELoss) -> WAEMetricFn:
 def wae_reconstruction_loss(l_fn: BCELoss) -> WAEMetricFn:
     def fn(X, J, enc_out, dec_out, d_true_out, d_fake_out):
         batch_size = X.shape[0]
-        recon_loss = l_fn(X.reshape(batch_size, -1), dec_out.reshape(batch_size, -1))
+
+        recon_loss = l_fn(dec_out.reshape(batch_size, -1), X.reshape(batch_size, -1))
         return recon_loss
 
     return fn
+
+
+def psnr(X, J, enc_out, dec_out, d_true_out, d_fake_out) -> torch.Tensor:
+    images_gt = X.permute(0, 2, 3, 1).detach().cpu().numpy()
+    images_out = dec_out.permute(0, 2, 3, 1).detach().cpu().numpy()
+
+    return torch.tensor(
+        [
+            peak_signal_noise_ratio(igt, iout)
+            for (igt, iout) in zip(images_gt, images_out)
+        ]
+    ).mean()
+
+
+def ssim(X, J, enc_out, dec_out, d_true_out, d_fake_out) -> torch.Tensor:
+    images_gt = X.permute(0, 2, 3, 1).detach().cpu().numpy()
+    images_out = dec_out.permute(0, 2, 3, 1).detach().cpu().numpy()
+
+    return torch.tensor(
+        [
+            structural_similarity(igt, iout, multichannel=True)
+            for (igt, iout) in zip(images_gt, images_out)
+        ]
+    ).mean()

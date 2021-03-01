@@ -102,6 +102,6 @@ environment_args.add_argument(
 environment_args.add_argument(
     "--dataset_root",
     type=Path,
-    default=Path.home() / "uj/.data/",
+    default=Path("/mnt/users/mprzewiezlikowski/local/data/.data/"),
     help="Path to the dataset files.",
 )
