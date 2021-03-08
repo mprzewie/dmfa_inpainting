@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from inpainting.classification.inpainting_classifier import InpaintingClassifier
 from inpainting.classification.metrics import crossentropy_metric, accuracy_metric
-from utils import printable_history
+from inpainting.utils import printable_history
 
 
 def eval_classifier(

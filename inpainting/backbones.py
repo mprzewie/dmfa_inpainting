@@ -147,8 +147,10 @@ def down_up_backbone_v2(
 
     up = [nn.Conv2d(last_channels, last_channels, kernel_size=3, padding=1)]
     for i in range(depth):
+        up_block = []
+        down_block = []
         for j in range(block_length):
-            down = down + [
+            down_block = down_block + [
                 conv_relu_bn(
                     first_channels * (2 ** (i - 1))
                     if (j == 0 and i != 0)
@@ -157,7 +159,8 @@ def down_up_backbone_v2(
                     kernel_size=kernel_size,
                 )
             ]
-            up = [
+
+            up_block = [
                 conv_relu_bn(
                     last_channels * (2 ** i),
                     last_channels * (2 ** (i - 1))
@@ -165,9 +168,9 @@ def down_up_backbone_v2(
                     else last_channels * (2 ** i),
                     kernel_size=kernel_size,
                 )
-            ] + up
+            ] + up_block
 
-        down = down + [
+        down_block = down_block + [
             nn.Conv2d(
                 first_channels * (2 ** i),
                 first_channels * (2 ** i),
@@ -177,7 +180,7 @@ def down_up_backbone_v2(
             )
         ]
 
-        up = [
+        up_block = [
             nn.ConvTranspose2d(
                 last_channels * (2 ** i),
                 last_channels * (2 ** i),
@@ -186,7 +189,10 @@ def down_up_backbone_v2(
                 stride=2,
                 output_padding=1,
             )
-        ] + up
+        ] + up_block
+
+        down = down + down_block
+        up = up_block + up
 
     h_d = h // (2 ** depth)
     w_d = w // (2 ** depth)

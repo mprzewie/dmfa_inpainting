@@ -301,7 +301,6 @@ def discriminator_fool_loss(l_fn: BCELoss) -> WAEMetricFn:
 def wae_reconstruction_loss(l_fn: BCELoss) -> WAEMetricFn:
     def fn(X, J, enc_out, dec_out, d_true_out, d_fake_out):
         batch_size = X.shape[0]
-
         recon_loss = l_fn(dec_out.reshape(batch_size, -1), X.reshape(batch_size, -1))
         return recon_loss
 

@@ -13,8 +13,8 @@ from inpainting.losses import (
 )
 
 
-def nll_calc_woodbury(x_s, p_s, m_s, a_s, d_s):
-    x_s, p_s, m_s, a_s, d_s = [t.double() for t in [x_s, p_s, m_s, a_s, d_s]]
+def nll_calc_woodbury(x_s, p_s, m_s, a_s, d_s, verb=False):
+    # x_s, p_s, m_s, a_s, d_s = [t.double() for t in [x_s, p_s, m_s, a_s, d_s]]
     d_s_inv = (1 / (d_s + (d_s == 0))) * (d_s != 0)
     x_minus_means = (x_s - m_s).unsqueeze(1)
     d_s_inv_rep = d_s_inv.unsqueeze(-2).repeat_interleave(dim=-2, repeats=a_s.shape[-2])
@@ -36,10 +36,9 @@ def nll_calc_woodbury(x_s, p_s, m_s, a_s, d_s):
         .bmm(x_minus_means.transpose(1, 2))
         .reshape(-1)
     )
-    losses = (
-        p_s * (1 / 2) * (log_noms + log_dets_lemma + log_2pi * (d_s != 0).sum(dim=1))
-    )
-    return losses.float().sum()
+    losses = (0.5 * (log_noms + log_dets_lemma + log_2pi * (d_s != 0).sum(dim=1))) + p_s
+
+    return losses.float()
 
 
 def mse(x_s, p_s, m_s, a_s, d_s):
@@ -73,12 +72,12 @@ def buffered_gather_batch_by_mask_indices(
 
     Returns:
         X: [b * mx, msk]
-        P: [b * mx, msk]
+        P: [b * mx]
         M: [b * mx, msk]
         A: [b * mx, l, msk]
         D: [b * mx, msk]
-        D_inv: [b * mx, msk]
-        msk - size of the mask
+
+        where: msk - size of the mask
     """
     b = X.shape[0]
     chw = torch.tensor(X.shape[1:]).prod()
@@ -161,7 +160,7 @@ def loss_factory(
         D: torch.Tensor,
     ):
         x_s, p_s, m_s, a_s, d_s = gathering_fn(X, J, P, M, A, D)
-        result = calc_fn(x_s, p_s, m_s, a_s, d_s) / X.shape[0]
+        result = calc_fn(x_s, p_s, m_s, a_s, d_s).sum() / X.shape[0]
 
         return result
 

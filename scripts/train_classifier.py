@@ -27,7 +27,7 @@ from inpainting.visualizations.digits import img_with_mask
 from inpainting.custom_layers import ConVar, ConVarNaive
 from inpainting.inpainters import mocks as inpainters_mocks
 from inpainting.classification.training import train_classifier
-from utils import printable_history, dump_history
+from inpainting.utils import printable_history, dump_history
 from inpainting.classification.inpainting_classifier import (
     InpaintingClassifier,
     get_classifier,
@@ -79,7 +79,7 @@ inpainter_args.add_argument(
     "--inpainter_type",
     type=str,
     default="gt",
-    choices=["gt", "noise", "zero", "dmfa", "mfa"],
+    choices=["gt", "noise", "zero", "dmfa", "mfa", "knn"],
     help="Type of Inpainter. 'gt', 'noise', 'zero' are mock models which produce ground-truth, randn noise and zero imputations, respectively. ",
 )
 
@@ -132,7 +132,7 @@ with (experiment_path / "args.json").open("w") as f:
     )
 
 with (experiment_path / "rerun.sh").open("w") as f:
-    print("#", datetime.now())
+    print("#", datetime.now(), file=f)
     print("python", *sys.argv, file=f)
 
 img_size = args.img_size
@@ -222,6 +222,9 @@ elif args.inpainter_type == "zero":
 
 elif args.inpainter_type == "noise":
     inpainter = inpainters_mocks.ZeroInpainter()
+
+elif args.inpainter_type == "knn":
+    inpainter = inpainters_mocks.KNNInpainter(ds_train)
 
 else:
     raise RuntimeError(f"Unknown inpainter type: {args.inpainter_type}!")

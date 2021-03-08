@@ -71,8 +71,8 @@ def nll_masked_batch_loss(
         .reshape(-1)
     )
     losses = (
-        p_s * (1 / 2) * (log_noms + log_dets_lemma + log_2pi * (d_s != 0).sum(dim=1))
-    )
+        (1 / 2) * (log_noms + log_dets_lemma + log_2pi * (d_s != 0).sum(dim=1))
+    ) + p_s
 
     result = losses.sum() / X.shape[0]
     return result.float()
@@ -182,7 +182,7 @@ def nll_masked_batch_loss_same_size_masks(
         .bmm(x_minus_means.transpose(1, 2))
         .reshape(-1)
     )
-    losses = p_s * (1 / 2) * (log_noms + log_dets_lemma + log_2pi * x_s.shape[1])
+    losses = p_s + ((1 / 2) * (log_noms + log_dets_lemma + log_2pi * x_s.shape[1]))
 
     return losses.sum() / X.shape[0]
 
@@ -226,20 +226,20 @@ def gather_batch_by_mask_indices(
     X_b_msk = X_b_chw[mask_inds_b, mask_inds_chw].reshape(b, msk)
     X_bmx_msk = X_b_msk.unsqueeze(1).repeat_interleave(mx, 1).reshape(b * mx, msk)
 
-    A_bmx_l_msk = (
+    A = (
         A.transpose(1, 3)[mask_inds_b, mask_inds_chw]
         .reshape(b, msk, l, mx)
         .transpose(1, 3)
         .reshape(b * mx, l, msk)
     )
 
-    M_bmx_msk = (
+    M = (
         M.transpose(1, 2)[mask_inds_b, mask_inds_chw]
         .reshape(b, msk, mx)
         .transpose(1, 2)
         .reshape(b * mx, msk)
     )
-    D_bmx_msk = (
+    D = (
         D.transpose(1, 2)[mask_inds_b, mask_inds_chw]
         .reshape(b, msk, mx)
         .transpose(1, 2)
@@ -247,7 +247,7 @@ def gather_batch_by_mask_indices(
     )
 
     P_bmx = P.reshape(b * mx)
-    return X_bmx_msk, P_bmx, M_bmx_msk, A_bmx_l_msk, D_bmx_msk
+    return X_bmx_msk, P_bmx, M, A, D
 
 
 def _nll_masked_sample_loss_v1(
@@ -288,7 +288,7 @@ def _nll_masked_sample_loss_v1(
             cov = cov_i + torch.diag(d_i)
             mvn_d = MultivariateNormal(m_i, cov)  # calculate this manually
             loss_for_p = -mvn_d.log_prob(x_masked.float())
-            losses_for_p.append(p_i * loss_for_p)
+            losses_for_p.append(p_i + loss_for_p)
     return torch.stack(losses_for_p).sum()
 
 
@@ -331,7 +331,7 @@ def _nll_masked_sample_loss_v2(
     x_minus_means = (x_masked - m_masked).unsqueeze(1)
     log_noms = x_minus_means.bmm(covs.inverse()).bmm(x_minus_means.transpose(1, 2))
     log_dets = covs.det().log()
-    losses = p * (1 / 2) * (log_noms + log_dets + log_2pi * x_masked.shape[0])
+    losses = p + ((1 / 2) * (log_noms + log_dets + log_2pi * x_masked.shape[0]))
     return losses.sum()
 
 
@@ -374,7 +374,13 @@ def _nll_masked_ubervectorized_batch_loss_v1(
     p_s = []
     # TODO vectorize index selection
     for (x, j, p, m, a, d) in zip(X, J, P, M, A, D):
-        x_p, p_p, m_p, a_p, d_p, = _unvectorized_gather_sample(x, j, p, m, a, d)
+        (
+            x_p,
+            p_p,
+            m_p,
+            a_p,
+            d_p,
+        ) = _unvectorized_gather_sample(x, j, p, m, a, d)
         x_s.extend(x_p)
         m_s.extend(m_p)
         d_s.extend(d_p)
@@ -401,7 +407,7 @@ def _nll_masked_ubervectorized_batch_loss_v1(
         .bmm(x_minus_means.transpose(1, 2))
         .reshape(-1)
     )
-    losses = p_s * (1 / 2) * (log_noms + log_dets_lemma + log_2pi * x_s.shape[1])
+    losses = p_s + ((1 / 2) * (log_noms + log_dets_lemma + log_2pi * x_s.shape[1]))
 
     return losses.sum() / X.shape[0]
 
@@ -521,7 +527,7 @@ def nll_masked_batch_loss_components(
     )
     log_2_pi_res = log_2pi * (d_s != 0).sum(dim=1)
     result = {
-        comp_name: (p_s * (1 / 2) * comp).sum() / X.shape[0]
+        comp_name: (p_s + ((1 / 2) * comp)).sum() / X.shape[0]
         for comp_name, comp in [
             ("log_noms", log_noms),
             ("x_minus_means", x_minus_means.sum(dim=[1, 2])),

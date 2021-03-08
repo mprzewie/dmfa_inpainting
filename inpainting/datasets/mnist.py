@@ -7,8 +7,8 @@ from inpainting.datasets.mask_coding import UNKNOWN_LOSS, UNKNOWN_NO_LOSS, KNOWN
 from inpainting.datasets.utils import RandomRectangleMaskConfig, random_mask_fn
 
 DEFAULT_MASK_CONFIGS = (
-    RandomRectangleMaskConfig(UNKNOWN_LOSS, 8, 8, 2, 2),
-    RandomRectangleMaskConfig(UNKNOWN_NO_LOSS, 8, 8, 2, 2),
+    RandomRectangleMaskConfig(UNKNOWN_LOSS, 14, 14, 0, 0),
+    #     RandomRectangleMaskConfig(UNKNOWN_NO_LOSS, 8, 8, 2, 2),
 )
 
 

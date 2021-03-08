@@ -48,7 +48,7 @@ def train_step(
     s = time()
     p, m, a, d = inpainter(x_masked, j_unknown)
     t1 = time()
-    loss = loss_fn(x, j, p, m, a, d)
+    loss = loss_fn(x, j, p.log(), m, a, d)
     t2 = time()
     loss.backward()
     t3 = time()
@@ -186,14 +186,14 @@ def eval_inpainter(
     sample_results = dict()
     for fold, dl in data_loaders.items():
         losses = []
-        for i, ((x, j), y) in enumerate(dl):
+        for i, ((x, j), y) in tqdm(enumerate(dl), f"Epoch {epoch} - {fold}"):
             if i > max_benchmark_batches:
                 break
             x, j, y = [t.to(device) for t in [x, j, y]]
             p, m, a, d = inpainter(x, j)
             losses.append(
                 {
-                    loss_name: l(x, j, p, m, a, d).detach().cpu().numpy()
+                    loss_name: l(x, j, p.log(), m, a, d).detach().item()
                     for loss_name, l in losses_to_log.items()
                 }
             )
@@ -207,7 +207,7 @@ def eval_inpainter(
 
     return dict(
         epoch=epoch,
-        losses={
+        metrics={
             loss_name: {
                 fold: np.mean([l[loss_name] for l in losses])
                 for fold, losses in fold_losses.items()

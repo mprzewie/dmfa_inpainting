@@ -40,6 +40,7 @@ matplotlib.rcParams["figure.facecolor"] = "white"
 from common_args import parser, training_args, environment_args
 from common import dmfa_from_args
 from datetime import datetime
+from inpainting.utils import printable_history, dump_history
 
 training_args.add_argument(
     "--l_nll_weight", type=float, default=1, help="Weight of NLL in the training loss."
@@ -104,6 +105,13 @@ dmfa_args.add_argument(
     type=int,
     default=4,
     help="Number of factors / width of matrix A returned by the model, which is used to estimate covariance. In the paper, this value is often referred to as `l`.",
+)
+
+dmfa_args.add_argument(
+    "--num_mixes",
+    type=int,
+    default=1,
+    help="Number of GMM mixes.",
 )
 
 dmfa_args.add_argument(
@@ -248,6 +256,8 @@ history = train_inpainter(
     export_freq=args.render_every,
     dump_sample_results=args.dump_sample_results,
 )
+dump_history(history, experiment_path)
+
 
 # save schemas of the inpainter and optimizer
 with (experiment_path / "inpainter.schema").open("w") as f:
@@ -257,11 +267,11 @@ with (experiment_path / "opt.schema").open("w") as f:
 
 # plot losses / metrics
 
-for loss_name in set(history[0]["losses"].keys()):
+for loss_name in set(history[0]["metrics"].keys()):
     for fold in ["train", "val"]:
         plt.plot(
             [h["epoch"] for h in history],
-            [h["losses"][loss_name][fold] for h in history],
+            [h["metrics"][loss_name][fold] for h in history],
             label=fold,
         )
     plt.title(loss_name)

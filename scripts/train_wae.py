@@ -246,7 +246,7 @@ convar = (
 
 img_shape = args.img_size
 
-enc_down, enc_latent, dec = bkb.down_up_backbone(
+enc_down, enc_latent, dec = bkb.down_up_backbone_v2(
     chw=(convar_out_channels, img_shape, img_shape),
     depth=args.wae_depth,
     block_length=args.wae_bl,
@@ -286,6 +286,9 @@ elif args.inpainter_type == "zero":
 elif args.inpainter_type == "noise":
     inpainter = inpainters_mocks.ZeroInpainter()
 
+elif args.inpainter_type == "knn":
+    inpainters = inpainters_mocks.KNNInpainter(ds_train)
+
 else:
     raise TypeError(f"Unknown inpainter {args.inpainter_type}")
 
@@ -318,6 +321,7 @@ print(
     }
 )
 wae = wae.to(device)
+
 
 optimizer = torch.optim.Adam(wae.parameters(), lr=args.lr)
 # save schemas of the inpainter and optimizer

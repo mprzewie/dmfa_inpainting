@@ -14,7 +14,7 @@ def dmfa_from_args(args) -> Union[FullyConvolutionalInpainter, LinearHeadsInpain
     """Load DMFA from parsed script arguments"""
     img_channels = 1 if "mnist" in args.dataset else 3
 
-    backbone_modules = bkb.down_up_backbone(
+    backbone_modules = bkb.down_up_backbone_v2(
         (img_channels * 2, args.img_size, args.img_size),
         depth=args.bkb_depth,
         first_channels=args.bkb_fc,
@@ -31,7 +31,7 @@ def dmfa_from_args(args) -> Union[FullyConvolutionalInpainter, LinearHeadsInpain
             c_h_w=(img_channels, args.img_size, args.img_size),
             last_channels=args.bkb_lc,
             extractor=nn.Sequential(*backbone_modules),
-            n_mixes=1,
+            n_mixes=args.num_mixes,
         )
     elif args.architecture == "linear_heads":
         inpainter = LinearHeadsInpainter(
@@ -39,7 +39,7 @@ def dmfa_from_args(args) -> Union[FullyConvolutionalInpainter, LinearHeadsInpain
             last_channels=args.bkb_lc,
             a_width=args.num_factors,
             a_amplitude=args.a_amplitude,
-            n_mixes=1,
+            n_mixes=args.num_mixes,
         )
     else:
         raise ValueError("can't initialize inpainter")
@@ -47,9 +47,10 @@ def dmfa_from_args(args) -> Union[FullyConvolutionalInpainter, LinearHeadsInpain
     return inpainter
 
 
-def mfa_from_path(mfa_path: Path):
+def mfa_from_path(mfa_path: Union[Path, str]):
     # https://github.com/mprzewie/gmm_missing
     # TODO make it less hacky
+    mfa_path = Path(mfa_path)
     sys.path.append("../../gmm_missing")
     from mfa_wrapper import MFAWrapper
 
