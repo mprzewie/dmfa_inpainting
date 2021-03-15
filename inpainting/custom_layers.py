@@ -31,9 +31,10 @@ class LambdaLayer(nn.Module):
 
 
 class ConVar(nn.Module):
-    def __init__(self, conv_layer: nn.Conv2d):
+    def __init__(self, conv_layer: nn.Conv2d, append_mask: bool = False):
         super().__init__()
         self.conv = conv_layer
+        self.append_mask = append_mask
 
     @property
     def conv_squared(self) -> nn.Conv2d:
@@ -88,15 +89,20 @@ class ConVar(nn.Module):
             self.conv((X * (J == mc.KNOWN)))
         )  # known data are simply passed through a convolution
 
-        return (X_known_conv_relu * (J[:, :1] == mc.KNOWN)) + (
+        res = (X_known_conv_relu * (J[:, :1] == mc.KNOWN)) + (
             exp_relu_weighted_mean * (J[:, :1] != mc.KNOWN)
         )
 
+        if self.append_mask:
+            res = torch.cat([res, J], dim=1)
+        return res
+
 
 class ConVarNaive(nn.Module):
-    def __init__(self, conv_layer: nn.Conv2d):
+    def __init__(self, conv_layer: nn.Conv2d, append_mask: bool = False):
         super().__init__()
         self.conv = conv_layer
+        self.append_mask = append_mask
 
     def forward(self, X, J, P, M, A, D):
         """
@@ -113,4 +119,7 @@ class ConVarNaive(nn.Module):
         oc = self.conv.out_channels
 
         X_inp = (X * (J == mc.KNOWN)) + (M.mean(dim=1) * (J != mc.KNOWN))
-        return nn.functional.relu(self.conv(X_inp))
+        res = nn.functional.relu(self.conv(X_inp))
+        if self.append_mask:
+            res = torch.cat([res, J], dim=1)
+        return res

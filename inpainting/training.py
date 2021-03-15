@@ -14,6 +14,8 @@ from time import time
 from torch.optim.lr_scheduler import _LRScheduler
 import pickle
 from pathlib import Path
+from inpainting.datasets.mask_coding import UNKNOWN_LOSS, UNKNOWN_NO_LOSS
+from inpainting.datasets.utils import RandomRectangleMaskConfig
 
 
 def num_tensors():

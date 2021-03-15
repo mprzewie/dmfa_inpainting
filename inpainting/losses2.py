@@ -194,5 +194,6 @@ def nll_plus_mse_calc(nll_weight=1, mse_weight=0) -> Callable:
 def nll_plus_mse_weighted_loss(nll_weight=1, mse_weight=0) -> Callable:
     return loss_factory(
         gathering_fn=buffered_gather_batch_by_mask_indices,
+        # gathering_fn=gather_batch_by_mask_indices,
         calc_fn=nll_plus_mse_calc(nll_weight, mse_weight),
     )

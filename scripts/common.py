@@ -1,13 +1,16 @@
 """Script utilities"""
 import sys
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional
 
 from torch import nn
 
 from inpainting import backbones as bkb
 from inpainting.inpainters.fullconv import FullyConvolutionalInpainter
 from inpainting.inpainters.linear_heads import LinearHeadsInpainter
+
+from inpainting.datasets.mask_coding import UNKNOWN_LOSS, UNKNOWN_NO_LOSS
+from inpainting.datasets.utils import RandomRectangleMaskConfig
 
 
 def dmfa_from_args(args) -> Union[FullyConvolutionalInpainter, LinearHeadsInpainter]:
@@ -55,3 +58,36 @@ def mfa_from_path(mfa_path: Union[Path, str]):
     from mfa_wrapper import MFAWrapper
 
     return MFAWrapper.from_path(mfa_path)
+
+
+def acflow_from_path(path: Union[Path, str], batch_size: Optional[int] = None):
+    path = Path(path)
+    sys.path.append("../../ACFlow/")
+    from utils.acflow_wrapper import ACFlowWrapper
+
+    return ACFlowWrapper.from_path(path, batch_size=batch_size)
+
+
+def mask_configs_from_args(args):
+    mask_configs_train = [
+        RandomRectangleMaskConfig(
+            UNKNOWN_LOSS, args.mask_hidden_h, args.mask_hidden_w, deterministic=False
+        )
+    ]
+
+    mask_configs_val = [
+        RandomRectangleMaskConfig(
+            UNKNOWN_LOSS, args.mask_hidden_h, args.mask_hidden_w, deterministic=True
+        )
+    ]
+
+    if args.mask_unknown_size > 0:
+        mask_configs_train.append(
+            RandomRectangleMaskConfig(
+                UNKNOWN_NO_LOSS,
+                args.mask_unknown_size,
+                args.mask_unknown_size,
+                deterministic=True,
+            )
+        )
+    return mask_configs_train, mask_configs_val

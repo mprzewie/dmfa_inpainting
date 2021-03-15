@@ -9,8 +9,7 @@ from pprint import pprint
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST, FashionMNIST
 
-from common import dmfa_from_args, mfa_from_path
-
+import common as common_loaders
 import json
 import torch
 from torch import nn
@@ -78,7 +77,7 @@ inpainter_args.add_argument(
     "--inpainter_type",
     type=str,
     default="gt",
-    choices=["gt", "noise", "zero", "dmfa", "mfa"],
+    choices=["gt", "noise", "zero", "dmfa", "mfa", "acflow", "knn"],
     help="Type of Inpainter. 'gt', 'noise', 'zero' are mock models which produce ground-truth, randn noise and zero imputations, respectively. ",
 )
 
@@ -148,6 +147,15 @@ wae_args.add_argument(
     choices=["bce", "mse"],
     help="BCE for MNIST, MSE for others?",
 )
+
+experiment_args.add_argument(
+    "--convar_append_mask",
+    action="store_true",
+    default=False,
+    help="If True, known/missing mask will be appended to convar output.",
+)
+
+
 args = parser.parse_args()
 
 if args.inpainter_type in ["gt", "noise", "zero"]:
@@ -184,21 +192,21 @@ img_size = args.img_size
 mask_hidden_h = args.mask_hidden_h
 mask_hidden_w = args.mask_hidden_w
 
+mask_configs_train, mask_configs_val = common_loaders.mask_configs_from_args(args)
+
 if "mnist" in args.dataset:
     ds_train, ds_val = mnist_train_val_ds(
         ds_type=FashionMNIST if args.dataset == "fashion_mnist" else MNIST,
         save_path=Path(args.dataset_root),
-        mask_configs=[
-            RandomRectangleMaskConfig(UNKNOWN_LOSS, mask_hidden_h, mask_hidden_w)
-        ],
+        mask_configs_train=mask_configs_train,
+        mask_configs_val=mask_configs_val,
         resize_size=(img_size, img_size),
     )
 elif args.dataset == "svhn":
     ds_train, ds_val = svhn_train_val_ds(
         save_path=Path(args.dataset_root),
-        mask_configs=[
-            RandomRectangleMaskConfig(UNKNOWN_LOSS, mask_hidden_h, mask_hidden_w)
-        ],
+        mask_configs_train=mask_configs_train,
+        mask_configs_val=mask_configs_val,
         resize_size=(img_size, img_size),
     )
 elif args.dataset == "celeba":
@@ -207,9 +215,8 @@ elif args.dataset == "celeba":
     full_img_size = int(img_size * img_to_crop)
     ds_train, ds_val = celeba_train_val_ds(
         save_path=Path(args.dataset_root),
-        mask_configs=[
-            RandomRectangleMaskConfig(UNKNOWN_LOSS, mask_hidden_h, mask_hidden_w)
-        ],
+        mask_configs_train=mask_configs_train,
+        mask_configs_val=mask_configs_val,
         resize_size=(full_img_size, full_img_size),
         crop_size=(img_size, img_size),
     )
@@ -228,26 +235,28 @@ plt.clf()
 
 print("dataset sizes", len(ds_train), len(ds_val))
 
-dl_train = DataLoader(ds_train, args.batch_size, shuffle=True)
+dl_train = DataLoader(ds_train, args.batch_size, shuffle=True, drop_last=True)
 dl_train_val = DataLoader(
-    ds_train, 128, shuffle=False
+    ds_train, args.batch_size, shuffle=False, drop_last=True
 )  # used for validation on training DS
-dl_val = DataLoader(ds_val, 128, shuffle=False)
+dl_val = DataLoader(ds_val, args.batch_size, shuffle=False, drop_last=True)
 
 convar_in_channels = 1 if "mnist" in args.dataset else 3
-convar_out_channels = args.convar_channels
+conv = nn.Conv2d(convar_in_channels, args.convar_channels, kernel_size=3, padding=1)
 convar = (
-    ConVar(nn.Conv2d(convar_in_channels, convar_out_channels, kernel_size=3, padding=1))
+    ConVar(conv, args.convar_append_mask)
     if args.convar_type == "full"
-    else ConVarNaive(
-        nn.Conv2d(convar_in_channels, convar_out_channels, kernel_size=3, padding=1)
-    )
+    else ConVarNaive(conv, args.convar_append_mask)
 )
 
 img_shape = args.img_size
 
 enc_down, enc_latent, dec = bkb.down_up_backbone_v2(
-    chw=(convar_out_channels, img_shape, img_shape),
+    chw=(
+        args.convar_channels + (convar_in_channels if args.convar_append_mask else 0),
+        img_shape,
+        img_shape,
+    ),
     depth=args.wae_depth,
     block_length=args.wae_bl,
     first_channels=args.wae_fc,
@@ -268,14 +277,19 @@ if args.inpainter_type == "dmfa":
     with (dmfa_path / "args.json").open("r") as f:
         dmfa_args = dot(json.load(f))
 
-    inpainter = dmfa_from_args(dmfa_args)
+    inpainter = common_loaders.dmfa_from_args(dmfa_args)
 
     checkpoint = torch.load((dmfa_path / "training.state"), map_location="cpu")
     inpainter.load_state_dict(checkpoint["inpainter"])
 
 elif args.inpainter_type == "mfa":
     print(f"Loading MFA inpainter from {args.inpainter_path}")
-    inpainter = mfa_from_path(args.inpainter_path)
+    inpainter = common_loaders.mfa_from_path(args.inpainter_path)
+
+elif args.inpainter_type == "acflow":
+    inpainter = common_loaders.acflow_from_path(
+        args.inpainter_path, batch_size=args.batch_size
+    )
 
 elif args.inpainter_type == "gt":
     inpainter = inpainters_mocks.GroundTruthInpainter()
@@ -287,7 +301,7 @@ elif args.inpainter_type == "noise":
     inpainter = inpainters_mocks.ZeroInpainter()
 
 elif args.inpainter_type == "knn":
-    inpainters = inpainters_mocks.KNNInpainter(ds_train)
+    inpainter = inpainters_mocks.KNNInpainter(ds_train)
 
 else:
     raise TypeError(f"Unknown inpainter {args.inpainter_type}")
@@ -418,7 +432,7 @@ if args.render_every > 0:
         shutil.rmtree(epochs_path)
     epochs_path.mkdir()
 
-    n_rows = 16
+    n_rows_fig = 16
 
     for h in tqdm(history):
         e = h["epoch"]
@@ -431,7 +445,7 @@ if args.render_every > 0:
 
             # sample results visualization
             X, J, P, M, A, D, Y, decoder_out, convar_out = [
-                sample_results[k][:n_rows]
+                sample_results[k][:n_rows_fig]
                 for k in [
                     "X",
                     "J",
@@ -447,7 +461,7 @@ if args.render_every > 0:
 
             row_length = vis.row_length(*[t[0] for t in [X, J, P, M, A, D, Y]]) + 1
 
-            fig, axes = plt.subplots(n_rows, row_length, figsize=(20, 30))
+            fig, axes = plt.subplots(n_rows_fig, row_length, figsize=(20, 30))
 
             for row_no, (x, j, p, m, a, d, y, dec_out) in enumerate(
                 zip(X, J, P, M, A, D, Y, decoder_out)
@@ -479,14 +493,14 @@ if args.render_every > 0:
 
             # convar out visualization
 
-            n_rows, n_cols = convar_out.shape[:2]
+            n_rows_convar, n_cols = convar_out.shape[:2]
 
             fig, axes = plt.subplots(
-                n_rows,
+                n_rows_convar,
                 n_cols,
                 figsize=(
                     n_cols // 2,
-                    n_rows // 2,
+                    n_rows_convar // 2,
                 ),
             )
             for i, row in enumerate(convar_out):

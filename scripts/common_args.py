@@ -60,6 +60,7 @@ data_args.add_argument(
     default=28,
     help="Size to which images from dataset will be resized (both height and width).",
 )
+# TODO simplify to one argument mask_hidden_size
 data_args.add_argument(
     "--mask_hidden_h",
     type=int,
@@ -71,6 +72,12 @@ data_args.add_argument(
     type=int,
     default=14,
     help="Width of hidden data masks which will be sampled on top of images.",
+)
+data_args.add_argument(
+    "--mask_unknown_size",
+    type=int,
+    default=-1,
+    help="Size of unknown data masks (unknown during training process). If <=0, those masks won't appear.",
 )
 
 

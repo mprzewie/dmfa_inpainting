@@ -52,10 +52,11 @@ class KNNInpainter(ZeroInpainter):
         knn: Optional[KNNImputer] = None,
         n_mixes: int = 1,
         a_width: int = 1,
+        max_samples: int = 5000,
     ):
         super().__init__(n_mixes=n_mixes, a_width=a_width)
         knn = knn or KNNImputer()
-        data_np = np.array([X.numpy() for (X, J), y in ds_train])
+        data_np = np.array([X.numpy() for (X, J), y in ds_train])[:max_samples]
 
         data_np = data_np.reshape(len(data_np), -1)
         print(f"Fitting {knn} to {len(data_np)} examples...")

@@ -12,7 +12,7 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from typing_extensions import Protocol
-
+from inpainting.datasets import mask_coding as mc
 from inpainting.custom_layers import ConVar
 from inpainting.inpainters.inpainter import InpainterModule
 from inpainting.utils import freeze_params, free_params, printable_history
@@ -300,6 +300,8 @@ def discriminator_fool_loss(l_fn: BCELoss) -> WAEMetricFn:
 
 def wae_reconstruction_loss(l_fn: BCELoss) -> WAEMetricFn:
     def fn(X, J, enc_out, dec_out, d_true_out, d_fake_out):
+        dec_out = dec_out * (J != mc.UNKNOWN_NO_LOSS)
+        X = X * (J != mc.UNKNOWN_NO_LOSS)
         batch_size = X.shape[0]
         recon_loss = l_fn(dec_out.reshape(batch_size, -1), X.reshape(batch_size, -1))
         return recon_loss
@@ -308,6 +310,9 @@ def wae_reconstruction_loss(l_fn: BCELoss) -> WAEMetricFn:
 
 
 def psnr(X, J, enc_out, dec_out, d_true_out, d_fake_out) -> torch.Tensor:
+
+    dec_out = dec_out * (J != mc.UNKNOWN_NO_LOSS)
+    X = X * (J != mc.UNKNOWN_NO_LOSS)
     images_gt = X.permute(0, 2, 3, 1).detach().cpu().numpy()
     images_out = dec_out.permute(0, 2, 3, 1).detach().cpu().numpy()
 
@@ -320,6 +325,8 @@ def psnr(X, J, enc_out, dec_out, d_true_out, d_fake_out) -> torch.Tensor:
 
 
 def ssim(X, J, enc_out, dec_out, d_true_out, d_fake_out) -> torch.Tensor:
+    dec_out = dec_out * (J != mc.UNKNOWN_NO_LOSS)
+    X = X * (J != mc.UNKNOWN_NO_LOSS)
     images_gt = X.permute(0, 2, 3, 1).detach().cpu().numpy()
     images_out = dec_out.permute(0, 2, 3, 1).detach().cpu().numpy()
 

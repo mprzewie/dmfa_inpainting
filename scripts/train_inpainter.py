@@ -26,8 +26,7 @@ from inpainting.datasets.mnist import train_val_datasets as mnist_train_val_ds
 from inpainting.datasets.svhn import train_val_datasets as svhn_train_val_ds
 from inpainting.datasets.cifar import train_val_datasets as cifar_train_val_ds
 
-from inpainting.datasets.mask_coding import UNKNOWN_LOSS
-from inpainting.datasets.utils import RandomRectangleMaskConfig
+
 from inpainting.visualizations.digits import img_with_mask
 from inpainting.training import train_inpainter
 from inpainting.utils import predictions_for_entire_loader
@@ -38,7 +37,7 @@ import matplotlib
 matplotlib.rcParams["figure.facecolor"] = "white"
 
 from common_args import parser, training_args, environment_args
-from common import dmfa_from_args
+from common import dmfa_from_args, mask_configs_from_args
 from datetime import datetime
 from inpainting.utils import printable_history, dump_history
 
@@ -150,16 +149,17 @@ with (experiment_path / "rerun.sh").open("a") as f:
 
 
 img_size = args.img_size
-mask_hidden_h = args.mask_hidden_h
-mask_hidden_w = args.mask_hidden_w
+
+
+mask_configs_train, mask_configs_val = mask_configs_from_args(args)
+
 
 if "mnist" in args.dataset:
     ds_train, ds_val = mnist_train_val_ds(
         ds_type=FashionMNIST if args.dataset == "fashion_mnist" else MNIST,
         save_path=Path(args.dataset_root),
-        mask_configs=[
-            RandomRectangleMaskConfig(UNKNOWN_LOSS, mask_hidden_h, mask_hidden_w)
-        ],
+        mask_configs_train=mask_configs_train,
+        mask_configs_val=mask_configs_val,
         resize_size=(img_size, img_size),
     )
 elif args.dataset == "celeba":
@@ -168,26 +168,20 @@ elif args.dataset == "celeba":
     full_img_size = int(img_size * img_to_crop)
     ds_train, ds_val = celeba_train_val_ds(
         save_path=Path(args.dataset_root),
-        mask_configs=[
-            RandomRectangleMaskConfig(UNKNOWN_LOSS, mask_hidden_h, mask_hidden_w)
-        ],
+        mask_configs=mask_configs,
         resize_size=(full_img_size, full_img_size),
         crop_size=(img_size, img_size),
     )
 elif args.dataset == "svhn":
     ds_train, ds_val = svhn_train_val_ds(
         save_path=Path(args.dataset_root),
-        mask_configs=[
-            RandomRectangleMaskConfig(UNKNOWN_LOSS, mask_hidden_h, mask_hidden_w)
-        ],
+        mask_configs=mask_configs,
         resize_size=(img_size, img_size),
     )
 elif args.dataset == "cifar10":
     ds_train, ds_val = cifar_train_val_ds(
         save_path=Path(args.dataset_root),
-        mask_configs=[
-            RandomRectangleMaskConfig(UNKNOWN_LOSS, mask_hidden_h, mask_hidden_w)
-        ],
+        mask_configs=mask_configs,
         resize_size=(img_size, img_size),
     )
 else:
@@ -247,9 +241,9 @@ history = train_inpainter(
             gathering_fn=l2.buffered_gather_batch_by_mask_indices, calc_fn=l2.mse
         ),
         nll=l2.nll_buffered,
-        log_nominators=log_nominators,
-        log_determinants=log_determinants,
-        a_variance=a_variance,
+        # log_nominators=log_nominators,
+        # log_determinants=log_determinants,
+        # a_variance=a_variance,
     ),
     tqdm_loader=True,
     export_path=experiment_path,
@@ -429,6 +423,7 @@ if args.dump_val_predictions:
         inpainter.to(torch.device("cpu")), dl_val, torch.device("cpu")
     )
     with (
-        experiment_path / f"val_predictions_{mask_hidden_h}x{mask_hidden_w}.pkl"
+        experiment_path
+        / f"val_predictions_{args.mask_hidden_h}x{args.mask_hidden_w}.pkl"
     ).open("wb") as f:
         pickle.dump(val_results, f)

@@ -1,5 +1,5 @@
 import dataclasses as dc
-from typing import Sequence
+from typing import Sequence, Optional
 
 import numpy as np
 import torch
@@ -14,9 +14,10 @@ class RandomRectangleMaskConfig:
     width: int
     height_ampl: int = 0
     width_ampl: int = 0
+    deterministic: bool = False
 
     def generate_on_mask(
-        self, mask: np.ndarray, copy: bool = True, seed: int = None
+        self, mask: np.ndarray, copy: bool = True, seed: Optional[int] = None
     ) -> np.ndarray:
         """
         Args:
@@ -41,7 +42,7 @@ class RandomRectangleMaskConfig:
 
 
 def random_mask_fn(
-    mask_configs: Sequence[RandomRectangleMaskConfig], deterministic: bool = True
+    mask_configs: Sequence[RandomRectangleMaskConfig],  # deterministic: bool = True
 ):
     def tensor_to_tensor_with_random_mask(image_tensor: torch.Tensor):
         mask = np.ones_like(image_tensor.numpy())
@@ -49,7 +50,7 @@ def random_mask_fn(
             mask = mc.generate_on_mask(
                 mask,
                 seed=mc.value + int((image_tensor * 255).sum().item())
-                if deterministic
+                if mc.deterministic
                 else None,
             )
         return image_tensor, torch.tensor(mask).float()

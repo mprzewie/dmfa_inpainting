@@ -17,6 +17,7 @@ def eval_classifier(
     data_loaders: dict,
     device: torch.device,
     metric_fns: dict,
+    max_benchmark_batches: int,
 ) -> dict:
     inpainting_classifier.eval()
     fold_metrics = dict()
@@ -50,6 +51,8 @@ def eval_classifier(
                 example_predictions[fold] = {
                     k: v.cpu().detach().numpy() for (k, v) in preds.items()
                 }
+            if i > max_benchmark_batches:
+                break
 
         fold_metrics[fold] = metrics
 
@@ -73,6 +76,7 @@ def train_classifier(
     optimizer: Optimizer,
     n_epochs: int,
     device: torch.device,
+    max_benchmark_batches: int,
 ) -> List[dict]:
     history = []
     epoch = 0
@@ -90,6 +94,7 @@ def train_classifier(
             metric_fns=dict(
                 cross_entropy=crossentropy_metric, accuracy=accuracy_metric
             ),
+            max_benchmark_batches=max_benchmark_batches,
         )
     )
     print(printable_history(history)[-1])
@@ -116,6 +121,7 @@ def train_classifier(
             metric_fns=dict(
                 cross_entropy=crossentropy_metric, accuracy=accuracy_metric
             ),
+            max_benchmark_batches=max_benchmark_batches,
         )
         history.append(eval_results)
         print(printable_history([eval_results])[-1])

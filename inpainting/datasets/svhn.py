@@ -22,27 +22,23 @@ DEFAULT_MASK_CONFIGS = (
 
 def train_val_datasets(
     save_path: Path,
-    mask_configs: Sequence[RandomRectangleMaskConfig] = DEFAULT_MASK_CONFIGS,
+    mask_configs_train: Sequence[RandomRectangleMaskConfig],
+    mask_configs_val: Sequence[RandomRectangleMaskConfig],
     resize_size: Tuple[int, int] = (32, 32),
 ) -> Tuple[SVHN, SVHN]:
     train_transform = tr.Compose(
         [
             tr.Resize(resize_size),
             tr.ToTensor(),
-            tr.Lambda(random_mask_fn(mask_configs=mask_configs)),
+            tr.Lambda(random_mask_fn(mask_configs=mask_configs_train)),
         ]
     )
 
     val_transform = tr.Compose(
         [
+            tr.Resize(resize_size),
             tr.ToTensor(),
-            tr.Lambda(
-                random_mask_fn(
-                    mask_configs=[
-                        m for m in mask_configs if m.value == UNKNOWN_LOSS
-                    ]  # only the mask which will be inpainted
-                )
-            ),
+            tr.Lambda(random_mask_fn(mask_configs=mask_configs_val)),
         ]
     )
 
