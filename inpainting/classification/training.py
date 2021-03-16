@@ -51,7 +51,7 @@ def eval_classifier(
                 example_predictions[fold] = {
                     k: v.cpu().detach().numpy() for (k, v) in preds.items()
                 }
-            if i > max_benchmark_batches:
+            if i > max_benchmark_batches and max_benchmark_batches > 0:
                 break
 
         fold_metrics[fold] = metrics

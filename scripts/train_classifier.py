@@ -180,9 +180,9 @@ print("dataset sizes", len(ds_train), len(ds_val))
 
 dl_train = DataLoader(ds_train, args.batch_size, shuffle=True, drop_last=True)
 dl_train_val = DataLoader(
-    ds_train, 16, shuffle=False, drop_last=True
+    ds_train, args.batch_size, shuffle=False, drop_last=True
 )  # used for validation on training DS
-dl_val = DataLoader(ds_val, 16, shuffle=False, drop_last=True)
+dl_val = DataLoader(ds_val, args.batch_size, shuffle=False, drop_last=True)
 
 
 convar_in_channels = 1 if "mnist" in args.dataset else 3
@@ -221,7 +221,7 @@ elif args.inpainter_type == "mfa":
     inpainter = common_loaders.mfa_from_path(args.inpainter_path)
 
 elif args.inpainter_type == "acflow":
-    inpainter = common_loaders.acflow_from_path(args.inpainter_path)
+    inpainter = common_loaders.acflow_from_path(args.inpainter_path, arg.batch_size)
 
 elif args.inpainter_type == "gt":
     inpainter = inpainters_mocks.GroundTruthInpainter()

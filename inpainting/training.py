@@ -16,6 +16,7 @@ import pickle
 from pathlib import Path
 from inpainting.datasets.mask_coding import UNKNOWN_LOSS, UNKNOWN_NO_LOSS
 from inpainting.datasets.utils import RandomRectangleMaskConfig
+from inpainting.utils import printable_history
 
 
 def num_tensors():
@@ -118,7 +119,7 @@ def train_inpainter(
         else [
             eval_inpainter(
                 inpainter,
-                epoch=0,
+                epoch=epoch,
                 data_loaders={"train": data_loader_train, "val": data_loader_val},
                 device=device,
                 losses_to_log=losses_to_log,
@@ -126,7 +127,7 @@ def train_inpainter(
             )
         ]
     )
-
+    print(printable_history(history))
     for e in tqdm(range(epoch, n_epochs + epoch), desc="Epoch"):
         inpainter.train()
 
@@ -147,6 +148,7 @@ def train_inpainter(
             losses_to_log=losses_to_log,
             max_benchmark_batches=max_benchmark_batches,
         )
+        print(printable_history([history_elem]))
         history.append(history_elem)
 
         if export_path is not None and (

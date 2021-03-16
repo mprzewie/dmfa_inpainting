@@ -168,20 +168,24 @@ elif args.dataset == "celeba":
     full_img_size = int(img_size * img_to_crop)
     ds_train, ds_val = celeba_train_val_ds(
         save_path=Path(args.dataset_root),
-        mask_configs=mask_configs,
+        mask_configs_train=mask_configs_train,
+        mask_configs_val=mask_configs_val,
         resize_size=(full_img_size, full_img_size),
         crop_size=(img_size, img_size),
     )
 elif args.dataset == "svhn":
+
     ds_train, ds_val = svhn_train_val_ds(
         save_path=Path(args.dataset_root),
-        mask_configs=mask_configs,
+        mask_configs_train=mask_configs_train,
+        mask_configs_val=mask_configs_val,
         resize_size=(img_size, img_size),
     )
 elif args.dataset == "cifar10":
     ds_train, ds_val = cifar_train_val_ds(
         save_path=Path(args.dataset_root),
-        mask_configs=mask_configs,
+        mask_configs_train=mask_configs_train,
+        mask_configs_val=mask_configs_val,
         resize_size=(img_size, img_size),
     )
 else:
@@ -202,7 +206,8 @@ print("dataset sizes", len(ds_train), len(ds_val))
 
 batch_size = args.batch_size
 dl_train = DataLoader(ds_train, batch_size, shuffle=True)
-dl_val = DataLoader(ds_val, 16, shuffle=False)
+dl_test_train = DataLoader(ds_train, 16, shuffle=False)
+dl_test_val = DataLoader(ds_val, 16, shuffle=False)
 
 # measure various components of the NLL loss:
 log_nominators = lambda x, j, p, m, a, d: nll_masked_batch_loss_components(

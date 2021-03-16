@@ -215,7 +215,7 @@ def eval_wae(
     for fold, dl in data_loaders.items():
         metrics = []
         for i, ((X, J), Y) in enumerate(dl):
-            if i > max_benchmark_batches:
+            if i > max_benchmark_batches and max_benchmark_batches > 0:
                 break
             X, J = [t.to(device) for t in [X, J]]
             (enc_out, dec_out), (d_true_out, d_fake_out), (PMAD_out, convar_out) = wae(
