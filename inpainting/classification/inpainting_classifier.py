@@ -69,17 +69,17 @@ def get_classifier(
     in_channels: int = 32, in_height: int = 28, in_width: int = 28, n_classes: int = 10
 ) -> nn.Module:
     """A simple classifier (the first layer is ConVar)"""
-    conv_out_chan = 64
+    conv_out_chan = in_channels * 2
     lin_in_shape = (in_height // 4) * (in_width // 4) * conv_out_chan
 
     return nn.Sequential(
         nn.ReLU(),
         nn.MaxPool2d(2),
-        nn.Conv2d(in_channels, 64, 3, padding=1),
+        nn.Conv2d(in_channels, conv_out_chan, 3, padding=1),
         nn.ReLU(),
         nn.MaxPool2d(2),
         nn.Flatten(),
-        nn.Linear(lin_in_shape, 128),
+        nn.Linear(lin_in_shape, conv_out_chan * 2),
         nn.ReLU(),
-        nn.Linear(128, n_classes),
+        nn.Linear(conv_out_chan * 2, n_classes),
     )

@@ -206,8 +206,7 @@ print("dataset sizes", len(ds_train), len(ds_val))
 
 batch_size = args.batch_size
 dl_train = DataLoader(ds_train, batch_size, shuffle=True)
-dl_test_train = DataLoader(ds_train, 16, shuffle=False)
-dl_test_val = DataLoader(ds_val, 16, shuffle=False)
+dl_val = DataLoader(ds_val, batch_size, shuffle=False)
 
 # measure various components of the NLL loss:
 log_nominators = lambda x, j, p, m, a, d: nll_masked_batch_loss_components(
@@ -308,6 +307,9 @@ if render_every >= 0:
         if e % render_every != 0 and e != last_epoch:
             continue
 
+        if "sample_results" not in h:
+            continue
+
         for ax_no, fold in [(0, "train"), (1, "val")]:
             x, j, p, m, a, d, y = [t[0] for t in h["sample_results"][fold]]
             # print(e, row_no, axes.shape)
@@ -337,6 +339,8 @@ if render_every >= 0:
         if e % render_every != 0 and e != last_epoch:
             continue
 
+        if "sample_results" not in h:
+            continue
         for ax_no, fold in [(0, "train"), (1, "val")]:
 
             row_length = vis.row_length(*list(zip(*h["sample_results"][fold]))[0])

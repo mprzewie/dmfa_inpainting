@@ -125,7 +125,12 @@ wae_args.add_argument(
     default=32,
     help="Number of channels in the last convolution of WAE decoder",
 )
-
+wae_args.add_argument(
+    "--wae_latent_size",
+    type=int,
+    default=20,
+    help="Latent size of WAE backbone",
+)
 wae_args.add_argument(
     "--wae_disc_hidden",
     type=int,
@@ -147,6 +152,7 @@ wae_args.add_argument(
     choices=["bce", "mse"],
     help="BCE for MNIST, MSE for others?",
 )
+
 
 experiment_args.add_argument(
     "--convar_append_mask",
@@ -242,18 +248,24 @@ dl_train_val = DataLoader(
 dl_val = DataLoader(ds_val, args.batch_size, shuffle=False, drop_last=True)
 
 convar_in_channels = 1 if "mnist" in args.dataset else 3
-conv = nn.Conv2d(convar_in_channels, args.convar_channels, kernel_size=3, padding=1)
+
+
+conv = nn.Conv2d(
+    convar_in_channels * 2 if args.convar_append_mask else convar_in_channels,
+    args.convar_channels,
+    kernel_size=3,
+    padding=1,
+)
 convar = (
     ConVar(conv, args.convar_append_mask)
     if args.convar_type == "full"
     else ConVarNaive(conv, args.convar_append_mask)
 )
-
 img_shape = args.img_size
 
-enc_down, enc_latent, dec = bkb.down_up_backbone_v2(
+enc_down, dec = bkb.down_up_backbone_v2(
     chw=(
-        args.convar_channels + (convar_in_channels if args.convar_append_mask else 0),
+        args.convar_channels,
         img_shape,
         img_shape,
     ),
@@ -261,13 +273,13 @@ enc_down, enc_latent, dec = bkb.down_up_backbone_v2(
     block_length=args.wae_bl,
     first_channels=args.wae_fc,
     last_channels=args.wae_lc,
-    latent=True,
+    latent_size=args.wae_latent_size,
 )
 
 dec_final_conv = nn.Conv2d(
     args.wae_lc, out_channels=convar_in_channels, kernel_size=3, padding=1
 )
-wae_encoder = nn.Sequential(enc_down, enc_latent)
+wae_encoder = enc_down
 wae_decoder = nn.Sequential(dec, dec_final_conv, nn.Sigmoid())
 
 if args.inpainter_type == "dmfa":
@@ -280,7 +292,9 @@ if args.inpainter_type == "dmfa":
     inpainter = common_loaders.dmfa_from_args(dmfa_args)
 
     checkpoint = torch.load((dmfa_path / "training.state"), map_location="cpu")
-    inpainter.load_state_dict(checkpoint["inpainter"])
+    inpainter.load_state_dict(
+        checkpoint["inpainter"],
+    )  # strict=False)
 
 elif args.inpainter_type == "mfa":
     print(f"Loading MFA inpainter from {args.inpainter_path}")
@@ -307,17 +321,13 @@ else:
     raise TypeError(f"Unknown inpainter {args.inpainter_type}")
 
 
-discriminator_in_size = (args.wae_lc * (2 ** (args.wae_depth - 1))) * (
-    (img_size // (2 ** args.wae_depth)) ** 2
-)
-
 wae = InpaintingWAE(
     inpainter=inpainter,
     convar_layer=convar,
     encoder=wae_encoder,
     decoder=wae_decoder,
     discriminator=get_discriminator(
-        in_size=discriminator_in_size, hidden_size=args.wae_disc_hidden
+        in_size=latent_size, hidden_size=args.wae_disc_hidden
     ),
     keep_inpainting_gradient=args.train_inpainter_layer,
 )
@@ -336,14 +346,13 @@ print(
 )
 wae = wae.to(device)
 
-
 optimizer = torch.optim.Adam(wae.parameters(), lr=args.lr)
+
+
 # save schemas of the inpainter and optimizer
 with (experiment_path / "inpainting_wae.schema").open("w") as f:
     print(wae, file=f)
 
-with (experiment_path / "opt.schema").open("w") as f:
-    print(optimizer, file=f)
 
 recon_loss = BCELoss() if args.wae_recon_loss == "bce" else MSELoss()
 history = train_wae(
@@ -355,7 +364,7 @@ history = train_wae(
     device=device,
     max_benchmark_batches=args.max_benchmark_batches,
     discriminator_loss_fn=BCELoss(
-        weight=torch.tensor(args.wae_disc_loss_weight).float().to(device)
+        weight=torch.tensor(args.wae_disc_loss_weight).to(device)
     ),
     reconstruction_loss_fn=recon_loss,
 )
@@ -374,7 +383,7 @@ if args.render_every > 0:
                 for t_name in ["X", "J", "P", "M", "A", "D", "Y"]
             ]
         )
-        + 1
+        + 2
     )
     last_epoch = max(h["epoch"] for h in history)
 
@@ -398,9 +407,19 @@ if args.render_every > 0:
             continue
 
         for ax_no, fold in [(0, "train"), (1, "val")]:
-            x, j, p, m, a, d, y, decoder_out = [
+            x, j, p, m, a, d, y, decoder_out, decoder_fake_out = [
                 h["sample_results"][fold][k][0]
-                for k in ["X", "J", "P", "M", "A", "D", "Y", "decoder_out"]
+                for k in [
+                    "X",
+                    "J",
+                    "P",
+                    "M",
+                    "A",
+                    "D",
+                    "Y",
+                    "decoder_out",
+                    "decoder_fake_out",
+                ]
             ]
             vis.visualize_sample(
                 x,
@@ -420,7 +439,18 @@ if args.render_every > 0:
                 if convar_in_channels == 1
                 else decoder_out.transpose(1, 2, 0)
             )
-            axes[row_no][-1].imshow(dec_out)
+
+            axes[row_no][-2].set_title("WAE out (true)")
+            axes[row_no][-2].imshow(dec_out)
+
+            dec_fake_out = (
+                decoder_fake_out.reshape(img_shape, img_shape)
+                if convar_in_channels == 1
+                else decoder_fake_out.transpose(1, 2, 0)
+            )
+
+            axes[row_no][-1].set_title("WAE sample")
+            axes[row_no][-1].imshow(dec_fake_out)
 
             row_no += 1
 
@@ -444,7 +474,7 @@ if args.render_every > 0:
             sample_results = h["sample_results"][fold]
 
             # sample results visualization
-            X, J, P, M, A, D, Y, decoder_out, convar_out = [
+            X, J, P, M, A, D, Y, decoder_out, convar_out, decoder_fake_out = [
                 sample_results[k][:n_rows_fig]
                 for k in [
                     "X",
@@ -456,15 +486,16 @@ if args.render_every > 0:
                     "Y",
                     "decoder_out",
                     "convar_out",
+                    "decoder_fake_out",
                 ]
             ]
 
-            row_length = vis.row_length(*[t[0] for t in [X, J, P, M, A, D, Y]]) + 1
+            row_length = vis.row_length(*[t[0] for t in [X, J, P, M, A, D, Y]]) + 2
 
             fig, axes = plt.subplots(n_rows_fig, row_length, figsize=(20, 30))
 
-            for row_no, (x, j, p, m, a, d, y, dec_out) in enumerate(
-                zip(X, J, P, M, A, D, Y, decoder_out)
+            for row_no, (x, j, p, m, a, d, y, dec_out, dec_fake_out) in enumerate(
+                zip(X, J, P, M, A, D, Y, decoder_out, decoder_fake_out)
             ):
 
                 vis.visualize_sample(
@@ -484,8 +515,16 @@ if args.render_every > 0:
                     if convar_in_channels == 1
                     else dec_out.transpose(1, 2, 0)
                 )
+                axes[row_no][-2].set_title(f"WAE encdec")
+                axes[row_no][-2].imshow(dec_out)
 
-                axes[row_no][-1].imshow(dec_out)
+                dec_fake_out = (
+                    dec_fake_out.reshape(img_shape, img_shape)
+                    if convar_in_channels == 1
+                    else dec_fake_out.transpose(1, 2, 0)
+                )
+                axes[row_no][-1].set_title("WAE sample")
+                axes[row_no][-1].imshow(dec_fake_out)
 
             title = f"{e}_{fold}_predictions"
             plt.suptitle(title)

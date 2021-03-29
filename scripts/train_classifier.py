@@ -186,6 +186,10 @@ dl_val = DataLoader(ds_val, args.batch_size, shuffle=False, drop_last=True)
 
 
 convar_in_channels = 1 if "mnist" in args.dataset else 3
+
+if args.convar_append_mask:
+    convar_in_channels = convar_in_channels * 2
+
 conv = nn.Conv2d(convar_in_channels, args.convar_channels, kernel_size=3, padding=1)
 convar = (
     ConVar(conv, args.convar_append_mask)
@@ -196,8 +200,7 @@ convar = (
 img_shape = args.img_size
 
 classifier = get_classifier(
-    in_channels=args.convar_channels
-    + (convar_in_channels if args.convar_append_mask else 0),
+    in_channels=args.convar_channels,
     in_height=img_shape,
     in_width=img_shape,
     n_classes=args.n_classes,
@@ -221,7 +224,7 @@ elif args.inpainter_type == "mfa":
     inpainter = common_loaders.mfa_from_path(args.inpainter_path)
 
 elif args.inpainter_type == "acflow":
-    inpainter = common_loaders.acflow_from_path(args.inpainter_path, arg.batch_size)
+    inpainter = common_loaders.acflow_from_path(args.inpainter_path, args.batch_size)
 
 elif args.inpainter_type == "gt":
     inpainter = inpainters_mocks.GroundTruthInpainter()

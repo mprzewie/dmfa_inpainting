@@ -23,7 +23,7 @@ def dmfa_from_args(args) -> Union[FullyConvolutionalInpainter, LinearHeadsInpain
         first_channels=args.bkb_fc,
         last_channels=args.bkb_lc,
         kernel_size=5,
-        latent=args.bkb_latent,
+        latent_size=-1,
         block_length=args.bkb_block_length,
     )
 

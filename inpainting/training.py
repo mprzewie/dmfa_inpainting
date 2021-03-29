@@ -91,10 +91,11 @@ def train_inpainter(
             optimizer.load_state_dict(chckp["optimizer"])
             epoch = chckp["epoch"]
 
-        histories_paths = (export_path / "histories").glob("*.pkl")
+        histories_paths = list((export_path / "histories").glob("*.pkl"))
         for hp in histories_paths:
             with hp.open("rb") as f:
                 history.append(pickle.load(f))
+
         history = sorted(history, key=lambda h: h["epoch"])
         print("Loaded history from epochs", [h["epoch"] for h in history])
 
@@ -195,6 +196,7 @@ def eval_inpainter(
                 break
             x, j, y = [t.to(device) for t in [x, j, y]]
             p, m, a, d = inpainter(x, j)
+
             losses.append(
                 {
                     loss_name: l(x, j, p.log(), m, a, d).detach().item()

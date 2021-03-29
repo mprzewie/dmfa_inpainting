@@ -140,7 +140,7 @@ def down_up_backbone_v2(
     first_channels: int = 16,
     last_channels: int = 1,
     kernel_size: int = 3,
-    latent: bool = True,
+    latent_size: int = -1,
 ) -> Tuple[nn.Module, ...]:
     c, h, w = chw
     down = [nn.Conv2d(c, first_channels, kernel_size=3, padding=1)]
@@ -199,19 +199,31 @@ def down_up_backbone_v2(
     c_d_i = first_channels * (2 ** (depth - 1))
     c_d_o = last_channels * (2 ** (depth - 1))
 
-    latent_modules = (
-        [
-            Reshape((-1, c_d_i * h_d * w_d)),
-            nn.ReLU(),
-            nn.Linear(c_d_i * h_d * w_d, c_d_o * h_d * w_d),
-            nn.ReLU(),
-            Reshape((-1, c_d_o, h_d, w_d)),
-        ]
-        if latent
-        else []
-    )
+    if latent_size > 0:
+        h_d = h // (2 ** depth)
+        w_d = w // (2 ** depth)
+        c_d_i = first_channels * (2 ** (depth - 1))
+        c_d_o = last_channels * (2 ** (depth - 1))
 
-    return nn.Sequential(*down), nn.Sequential(*latent_modules), nn.Sequential(*up)
+        enc_out_size = c_d_i * h_d * w_d
+        dec_in_size = c_d_o * h_d * w_d
+
+        down.append(
+            nn.Sequential(
+                nn.ReLU(),
+                Reshape((-1, enc_out_size)),
+                nn.Linear(enc_out_size, latent_size),
+            )
+        )
+        up = [
+            nn.Sequential(
+                nn.Linear(latent_size, dec_in_size),
+                Reshape((-1, c_d_o, h_d, w_d)),
+                nn.ReLU(),
+            )
+        ] + up
+
+    return nn.Sequential(*down), nn.Sequential(*up)
 
 
 def down_up_backbone(

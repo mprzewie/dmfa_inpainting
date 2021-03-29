@@ -51,7 +51,6 @@ class InpaintingWAE(nn.Module):
 
         if not self.keep_inpainting_gradient:
             P_r, M_r, A_r, D_r = [t.detach() for t in [P_r, M_r, A_r, D_r]]
-
         convar_out = self.convar(X, J, P_r, M_r, A_r, D_r)
 
         encoder_out = self.encoder(convar_out)
@@ -61,9 +60,10 @@ class InpaintingWAE(nn.Module):
         discriminator_fake_encoding_out = self.discriminator(fake_encoding)
 
         decoder_out = self.decoder(encoder_out)
-
+        decoder_fake_out = self.decoder(fake_encoding)
         return (
             (encoder_out, decoder_out),
+            (fake_encoding, decoder_fake_out),
             (discriminator_true_encoding_out, discriminator_fake_encoding_out),
             ((P, M, A, D), convar_out),
         )
@@ -92,8 +92,8 @@ def train_wae(
     n_epochs: int,
     device: torch.device,
     max_benchmark_batches: int,
-    discriminator_loss_fn: BCELoss = BCELoss(),
-    reconstruction_loss_fn: BCELoss = BCELoss(),
+    discriminator_loss_fn: BCELoss,
+    reconstruction_loss_fn: BCELoss,
 ) -> List[dict]:
     history = []
     epoch = 0
@@ -155,35 +155,41 @@ def train_epoch(
 
         # train discriminator
         wae.zero_grad()
+        freeze_params(wae.inpainter)
         freeze_params(wae.convar)
         freeze_params(wae.encoder)
         freeze_params(wae.decoder)
         free_params(wae.discriminator)
 
-        (enc_out, dec_out), (d_true_out, d_fake_out), _ = wae(X, J)
+        (enc_out, dec_out), (enc_fake, dec_fake_out), (d_true_out, d_fake_out), _ = wae(
+            X, J
+        )
 
         d_loss = discriminator_train_loss(discriminator_loss_fn)(
-            X, J, enc_out, dec_out, d_true_out, d_fake_out
+            X, J, enc_out, dec_out, enc_fake, dec_fake_out, d_true_out, d_fake_out
         )
         d_loss.backward()
         optimizer.step()
 
         # train encoder + decoder
         wae.zero_grad()
+        free_params(wae.inpainter)
         free_params(wae.convar)
         free_params(wae.encoder)
         free_params(wae.decoder)
         freeze_params(wae.discriminator)
 
-        (enc_out, dec_out), (d_true_out, d_fake_out), _ = wae(X, J)
+        (enc_out, dec_out), (enc_fake, dec_fake_out), (d_true_out, d_fake_out), _ = wae(
+            X, J
+        )
 
         recon_loss = wae_reconstruction_loss(reconstruction_loss_fn)(
-            X, J, enc_out, dec_out, d_true_out, d_fake_out
+            X, J, enc_out, dec_out, enc_fake, dec_fake_out, d_true_out, d_fake_out
         )
         d_loss = discriminator_fool_loss(discriminator_loss_fn)(
-            X, J, enc_out, dec_out, d_true_out, d_fake_out
+            X, J, enc_out, dec_out, enc_fake, dec_fake_out, d_true_out, d_fake_out
         )
-        loss = recon_loss - d_loss
+        loss = recon_loss + d_loss
         loss.backward()
         optimizer.step()
 
@@ -218,13 +224,24 @@ def eval_wae(
             if i > max_benchmark_batches and max_benchmark_batches > 0:
                 break
             X, J = [t.to(device) for t in [X, J]]
-            (enc_out, dec_out), (d_true_out, d_fake_out), (PMAD_out, convar_out) = wae(
-                X, J
-            )
+            (
+                (enc_out, dec_out),
+                (enc_fake, dec_fake_out),
+                (d_true_out, d_fake_out),
+                (PMAD_out, convar_out),
+            ) = wae(X, J)
+
             metrics.append(
                 {
                     m_name: metric_fn(
-                        X, J, enc_out, dec_out, d_true_out, d_fake_out
+                        X,
+                        J,
+                        enc_out,
+                        dec_out,
+                        enc_fake,
+                        dec_fake_out,
+                        d_true_out,
+                        d_fake_out,
                     ).item()
                     for (m_name, metric_fn) in metric_fns.items()
                 }
@@ -248,6 +265,8 @@ def eval_wae(
                     encoder_out=enc_out,
                     decoder_out=dec_out,
                     discriminator_out=d_true_out,
+                    encoder_fake=enc_fake,
+                    decoder_fake_out=dec_fake_out,
                 )
                 example_predictions[fold] = {
                     k: v.cpu().detach().numpy() for (k, v) in preds.items()
@@ -273,14 +292,16 @@ def discriminator_train_loss(l_fn: BCELoss) -> WAEMetricFn:
     and encodings from prior
     """
 
-    def fn(X, J, enc_out, dec_out, d_true_out, d_fake_out):
-        y_fake = [1] * len(d_fake_out)
-        y_true = [0] * len(d_true_out)
+    def fn(X, J, enc_out, dec_out, enc_fake, dec_fake_out, d_true_out, d_fake_out):
+        y_fake = torch.ones(len(d_fake_out)).float().to(d_fake_out.device)
+        y_true = torch.zeros(len(d_true_out)).float().to(d_true_out.device)
 
-        d_y = torch.tensor(y_true + y_fake).float().to(d_true_out.device)
-        d_out = torch.cat([d_true_out, d_fake_out])
-        d_loss = l_fn(d_out.reshape(-1), d_y)
-        return d_loss
+        # d_out = torch.cat([d_true_out, d_fake_out])
+
+        l_fake = l_fn(d_fake_out.reshape(-1), y_fake)
+        l_true = l_fn(d_true_out.reshape(-1), y_true)
+
+        return l_fake + l_true  # * 0.01
 
     return fn
 
@@ -290,16 +311,16 @@ def discriminator_fool_loss(l_fn: BCELoss) -> WAEMetricFn:
     Train encoder/decoder to fool discriminator
     """
 
-    def fn(X, J, enc_out, dec_out, d_true_out, d_fake_out):
-        d_y = torch.tensor([1] * len(d_true_out)).float().to(d_true_out.device)
+    def fn(X, J, enc_out, dec_out, enc_fake, dec_fake_out, d_true_out, d_fake_out):
+        d_y = torch.ones(len(d_true_out)).float().to(d_true_out.device)
         d_loss = l_fn(d_true_out.reshape(-1), d_y)
-        return d_loss
+        return d_loss  # * 0.01
 
     return fn
 
 
 def wae_reconstruction_loss(l_fn: BCELoss) -> WAEMetricFn:
-    def fn(X, J, enc_out, dec_out, d_true_out, d_fake_out):
+    def fn(X, J, enc_out, dec_out, enc_fake, dec_fake_out, d_true_out, d_fake_out):
         dec_out = dec_out * (J != mc.UNKNOWN_NO_LOSS)
         X = X * (J != mc.UNKNOWN_NO_LOSS)
         batch_size = X.shape[0]
@@ -309,7 +330,9 @@ def wae_reconstruction_loss(l_fn: BCELoss) -> WAEMetricFn:
     return fn
 
 
-def psnr(X, J, enc_out, dec_out, d_true_out, d_fake_out) -> torch.Tensor:
+def psnr(
+    X, J, enc_out, dec_out, enc_fake, dec_fake_out, d_true_out, d_fake_out
+) -> torch.Tensor:
 
     dec_out = dec_out * (J != mc.UNKNOWN_NO_LOSS)
     X = X * (J != mc.UNKNOWN_NO_LOSS)
@@ -324,7 +347,9 @@ def psnr(X, J, enc_out, dec_out, d_true_out, d_fake_out) -> torch.Tensor:
     ).mean()
 
 
-def ssim(X, J, enc_out, dec_out, d_true_out, d_fake_out) -> torch.Tensor:
+def ssim(
+    X, J, enc_out, dec_out, enc_fake, dec_fake_out, d_true_out, d_fake_out
+) -> torch.Tensor:
     dec_out = dec_out * (J != mc.UNKNOWN_NO_LOSS)
     X = X * (J != mc.UNKNOWN_NO_LOSS)
     images_gt = X.permute(0, 2, 3, 1).detach().cpu().numpy()

@@ -13,8 +13,9 @@ from inpainting.losses import (
 )
 
 
-def nll_calc_woodbury(x_s, p_s, m_s, a_s, d_s, verb=False):
-    # x_s, p_s, m_s, a_s, d_s = [t.double() for t in [x_s, p_s, m_s, a_s, d_s]]
+def nll_calc_woodbury(x_s, p_s, m_s, a_s, d_s, return_sum: bool = True):
+    """returns NLL for each element in batch!"""
+    #     x_s, p_s, m_s, a_s, d_s = [t.double() for t in [x_s, p_s, m_s, a_s, d_s]]
     d_s_inv = (1 / (d_s + (d_s == 0))) * (d_s != 0)
     x_minus_means = (x_s - m_s).unsqueeze(1)
     d_s_inv_rep = d_s_inv.unsqueeze(-2).repeat_interleave(dim=-2, repeats=a_s.shape[-2])
@@ -38,6 +39,8 @@ def nll_calc_woodbury(x_s, p_s, m_s, a_s, d_s, verb=False):
     )
     losses = (0.5 * (log_noms + log_dets_lemma + log_2pi * (d_s != 0).sum(dim=1))) + p_s
 
+    if return_sum:
+        losses = losses.sum()
     return losses.float()
 
 
@@ -160,7 +163,7 @@ def loss_factory(
         D: torch.Tensor,
     ):
         x_s, p_s, m_s, a_s, d_s = gathering_fn(X, J, P, M, A, D)
-        result = calc_fn(x_s, p_s, m_s, a_s, d_s).sum() / X.shape[0]
+        result = calc_fn(x_s, p_s, m_s, a_s, d_s) / X.shape[0]
 
         return result
 
@@ -186,6 +189,7 @@ def nll_plus_mse_calc(nll_weight=1, mse_weight=0) -> Callable:
     def calc_fn(x_s, p_s, m_s, a_s, d_s):
         nll_val = nll_calc_woodbury(x_s, p_s, m_s, a_s, d_s)
         mse_val = mse(x_s, p_s, m_s, a_s, d_s)
+
         return (nll_weight * nll_val) + (mse_weight * mse_val)
 
     return calc_fn

@@ -17,7 +17,6 @@ def train_val_datasets(
     save_path: Path,
     mask_configs_train: Sequence[RandomRectangleMaskConfig],
     mask_configs_val: Sequence[RandomRectangleMaskConfig],
-    S,
     resize_size: Tuple[int, int] = (50, 50),
     crop_size: Tuple[int, int] = (32, 32),
 ) -> Tuple[CelebA, CelebA]:

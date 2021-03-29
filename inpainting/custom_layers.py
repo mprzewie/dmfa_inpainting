@@ -57,11 +57,32 @@ class ConVar(nn.Module):
 
         oc = self.conv.out_channels
 
-        M_conv = self.conv(M.reshape(b * n, c, h, w)).reshape(b, n, oc, h, w)
+        M_conv_input = M.reshape(b * n, c, h, w)
+        D_conv_input = D.reshape(b * n, c, h, w)
+        A_conv_input = A.reshape(b * n * l, c, h, w)
+        X_conv_input = X * (J == mc.KNOWN)
+
+        if self.append_mask:
+            J_md = J.reshape(b, 1, c, h, w).repeat(
+                1, n, 1, 1, 1
+            )  # b,c,h,w -> b,n,c,h,w
+            J_a = J.reshape(b, 1, 1, c, h, w).repeat(
+                1, n, l, 1, 1, 1
+            )  # b,c,h,w -> b,n,l,c,h,w
+
+            J_md = J_md.reshape(*M_conv_input.shape)
+            J_a = J_a.reshape(*A_conv_input.shape)
+
+            M_conv_input = torch.cat([M_conv_input, J_md], dim=1)
+            D_conv_input = torch.cat([D_conv_input, J_md], dim=1)
+            A_conv_input = torch.cat([A_conv_input, J_a], dim=1)
+            X_conv_input = torch.cat([X_conv_input, J], dim=1)
+
+        M_conv = self.conv(M_conv_input).reshape(b, n, oc, h, w)
 
         # conv squared so that D is positive
-        D_conv = self.conv_squared(D.reshape(b * n, c, h, w)).reshape(b, n, oc, h, w)
-        A_conv = self.conv(A.reshape(b * n * l, c, h, w)).reshape(b, n, l, oc, h, w)
+        D_conv = self.conv_squared(D_conv_input).reshape(b, n, oc, h, w)
+        A_conv = self.conv(A_conv_input).reshape(b, n, l, oc, h, w)
 
         means = M_conv  # (3)
 
@@ -86,15 +107,13 @@ class ConVar(nn.Module):
         )
 
         X_known_conv_relu = nn.functional.relu(
-            self.conv((X * (J == mc.KNOWN)))
+            self.conv(X_conv_input)
         )  # known data are simply passed through a convolution
 
         res = (X_known_conv_relu * (J[:, :1] == mc.KNOWN)) + (
             exp_relu_weighted_mean * (J[:, :1] != mc.KNOWN)
         )
 
-        if self.append_mask:
-            res = torch.cat([res, J], dim=1)
         return res
 
 
@@ -119,7 +138,10 @@ class ConVarNaive(nn.Module):
         oc = self.conv.out_channels
 
         X_inp = (X * (J == mc.KNOWN)) + (M.mean(dim=1) * (J != mc.KNOWN))
-        res = nn.functional.relu(self.conv(X_inp))
+
         if self.append_mask:
-            res = torch.cat([res, J], dim=1)
+            X_inp = torch.cat([X_inp, J], dim=1)
+
+        res = nn.functional.relu(self.conv(X_inp))
+
         return res
