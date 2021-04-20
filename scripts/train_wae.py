@@ -29,6 +29,7 @@ from inpainting.inpainters import mocks as inpainters_mocks
 from inpainting.utils import printable_history, dump_history
 import inpainting.visualizations.visualizations_utils as vis
 import inpainting.backbones as bkb
+from inpainting.evaluation import frechet_models as fid_models
 from inpainting.generative.wae import InpaintingWAE, get_discriminator, train_wae
 from torch.nn import BCELoss, MSELoss
 from datetime import datetime
@@ -151,6 +152,10 @@ wae_args.add_argument(
     default="bce",
     choices=["bce", "mse"],
     help="BCE for MNIST, MSE for others?",
+)
+
+wae_args.add_argument(
+    "--skip_fid", action="store_true", default=False, help="Skip FID evaluation."
 )
 
 
@@ -327,7 +332,7 @@ wae = InpaintingWAE(
     encoder=wae_encoder,
     decoder=wae_decoder,
     discriminator=get_discriminator(
-        in_size=latent_size, hidden_size=args.wae_disc_hidden
+        in_size=args.wae_latent_size, hidden_size=args.wae_disc_hidden
     ),
     keep_inpainting_gradient=args.train_inpainter_layer,
 )
@@ -353,6 +358,17 @@ optimizer = torch.optim.Adam(wae.parameters(), lr=args.lr)
 with (experiment_path / "inpainting_wae.schema").open("w") as f:
     print(wae, file=f)
 
+if args.skip_fid:
+    fid_model = None
+else:
+    if "mnist" in args.dataset:
+        fid_model = fid_models.MNISTNet.pretrained(
+            dl_train=dl_train, dl_val=dl_val, device=device
+        )
+    else:
+        print("Loading Inception FID model")
+        fid_model = fid_models.InceptionV3().to(device)
+
 
 recon_loss = BCELoss() if args.wae_recon_loss == "bce" else MSELoss()
 history = train_wae(
@@ -367,6 +383,7 @@ history = train_wae(
         weight=torch.tensor(args.wae_disc_loss_weight).to(device)
     ),
     reconstruction_loss_fn=recon_loss,
+    fid_model=fid_model,
 )
 
 pprint(printable_history(history))

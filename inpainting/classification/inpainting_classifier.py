@@ -5,6 +5,7 @@ from torch import nn
 
 from inpainting.custom_layers import ConVar
 from inpainting.inpainters.inpainter import InpainterModule
+from inpainting import backbones as bkb
 
 
 class InpaintingClassifier(nn.Module):
@@ -66,20 +67,43 @@ class InpaintingClassifier(nn.Module):
 
 
 def get_classifier(
-    in_channels: int = 32, in_height: int = 28, in_width: int = 28, n_classes: int = 10
+    in_channels: int = 32,
+    in_height: int = 28,
+    in_width: int = 28,
+    n_classes: int = 10,
+    depth: int = 2,
+    block_len: int = 1,
+    latent_size: int = 20,
+    dropout: float = 0.0,
 ) -> nn.Module:
     """A simple classifier (the first layer is ConVar)"""
-    conv_out_chan = in_channels * 2
-    lin_in_shape = (in_height // 4) * (in_width // 4) * conv_out_chan
+    encoder, _ = bkb.down_up_backbone_v2(
+        chw=(
+            in_channels,
+            in_height,
+            in_width,
+        ),
+        depth=depth,
+        block_length=block_len,
+        first_channels=in_channels,
+        latent_size=latent_size,
+    )
 
     return nn.Sequential(
-        nn.ReLU(),
-        nn.MaxPool2d(2),
-        nn.Conv2d(in_channels, conv_out_chan, 3, padding=1),
-        nn.ReLU(),
-        nn.MaxPool2d(2),
-        nn.Flatten(),
-        nn.Linear(lin_in_shape, conv_out_chan * 2),
-        nn.ReLU(),
-        nn.Linear(conv_out_chan * 2, n_classes),
+        encoder, nn.Dropout(p=dropout), nn.ReLU(), nn.Linear(latent_size, n_classes)
     )
+
+    # conv_out_chan = in_channels * 2
+    # lin_in_shape = (in_height // 4) * (in_width // 4) * conv_out_chan
+
+    # return nn.Sequential(
+    #     nn.ReLU(),
+    #     nn.MaxPool2d(2),
+    #     nn.Conv2d(in_channels, conv_out_chan, 3, padding=1),
+    #     nn.ReLU(),
+    #     nn.MaxPool2d(2),
+    #     nn.Flatten(),
+    #     nn.Linear(lin_in_shape, conv_out_chan * 2),
+    #     nn.ReLU(),
+    #     nn.Linear(conv_out_chan * 2, n_classes),
+    # )

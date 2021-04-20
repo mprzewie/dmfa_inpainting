@@ -23,6 +23,8 @@ from inpainting.datasets.mask_coding import UNKNOWN_LOSS
 from inpainting.datasets.utils import RandomRectangleMaskConfig
 from inpainting.datasets.mnist import train_val_datasets as mnist_train_val_ds
 from inpainting.datasets.svhn import train_val_datasets as svhn_train_val_ds
+from inpainting.datasets.cifar import train_val_datasets as cifar_train_val_ds
+
 from inpainting.visualizations.digits import img_with_mask
 from inpainting.custom_layers import ConVar, ConVarNaive
 from inpainting.inpainters import mocks as inpainters_mocks
@@ -109,6 +111,21 @@ classifier_args.add_argument(
 
 classifier_args.add_argument("--n_classes", type=int, default=10, help="N classes")
 
+classifier_args.add_argument(
+    "--cls_depth", type=int, default=2, help="Classifier depth"
+)
+
+classifier_args.add_argument(
+    "--cls_bl", type=int, default=1, help="Classifier conv-relu-bn block len"
+)
+
+classifier_args.add_argument(
+    "--cls_latent_size", type=int, default=20, help="Classifier latent size"
+)
+
+classifier_args.add_argument(
+    "--cls_dropout", type=float, default=0.0, help="Classifier dropout"
+)
 
 args = parser.parse_args()
 
@@ -163,6 +180,13 @@ elif args.dataset == "svhn":
         mask_configs_val=mask_configs_val,
         resize_size=(img_size, img_size),
     )
+elif args.dataset == "cifar10":
+    ds_train, ds_val = cifar_train_val_ds(
+        save_path=Path(args.dataset_root),
+        mask_configs_train=mask_configs_train,
+        mask_configs_val=mask_configs_val,
+        resize_size=(img_size, img_size),
+    )
 else:
     raise ValueError(f"Unknown dataset {args.dataset}.")
 
@@ -204,6 +228,10 @@ classifier = get_classifier(
     in_height=img_shape,
     in_width=img_shape,
     n_classes=args.n_classes,
+    depth=args.cls_depth,
+    block_len=args.cls_bl,
+    latent_size=args.cls_latent_size,
+    dropout=args.cls_dropout,
 )
 
 

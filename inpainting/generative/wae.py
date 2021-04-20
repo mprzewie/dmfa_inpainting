@@ -2,7 +2,7 @@
 Code inspired by
 https://github.com/sedelmeyer/wasserstein-auto-encoder/blob/master/Wasserstein-auto-encoder_tutorial.ipynb
 """
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 import torch
@@ -17,6 +17,7 @@ from inpainting.custom_layers import ConVar
 from inpainting.inpainters.inpainter import InpainterModule
 from inpainting.utils import freeze_params, free_params, printable_history
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
+from inpainting.evaluation import fid
 
 
 class InpaintingWAE(nn.Module):
@@ -94,6 +95,7 @@ def train_wae(
     max_benchmark_batches: int,
     discriminator_loss_fn: BCELoss,
     reconstruction_loss_fn: BCELoss,
+    fid_model: Optional[nn.Module] = None,
 ) -> List[dict]:
     history = []
     epoch = 0
@@ -115,6 +117,7 @@ def train_wae(
             device=device,
             metric_fns=metric_fns,
             max_benchmark_batches=max_benchmark_batches,
+            fid_model=fid_model,
         )
     )
     print(printable_history(history)[-1])
@@ -130,6 +133,7 @@ def train_wae(
             reconstruction_loss_fn=reconstruction_loss_fn,
             metric_fns=metric_fns,
             max_benchmark_batches=max_benchmark_batches,
+            fid_model=fid_model,
         )
         history.append(epoch_result)
         print(printable_history(history)[-1])
@@ -147,6 +151,7 @@ def train_epoch(
     reconstruction_loss_fn: BCELoss,
     metric_fns: Dict[str, WAEMetricFn],
     max_benchmark_batches: int,
+    fid_model: nn.Module,
 ) -> dict:
     wae.train()
 
@@ -203,6 +208,7 @@ def train_epoch(
         device=device,
         metric_fns=metric_fns,
         max_benchmark_batches=max_benchmark_batches,
+        fid_model=fid_model,
     )
 
 
@@ -213,6 +219,7 @@ def eval_wae(
     device: torch.device,
     metric_fns: Dict[str, WAEMetricFn],
     max_benchmark_batches: int,
+    fid_model: Optional[nn.Module],
 ) -> dict:
     wae.eval()
     fold_metrics = dict()
@@ -220,6 +227,7 @@ def eval_wae(
 
     for fold, dl in data_loaders.items():
         metrics = []
+        batches = []
         for i, ((X, J), Y) in enumerate(dl):
             if i > max_benchmark_batches and max_benchmark_batches > 0:
                 break
@@ -246,6 +254,10 @@ def eval_wae(
                     for (m_name, metric_fn) in metric_fns.items()
                 }
             )
+            batch = {"X": X, "J": J, "dec_out": dec_out, "dec_fake_out": dec_fake_out}
+
+            batches.append({k: v.detach().cpu().numpy() for (k, v) in batch.items()})
+
             if i == 0:
                 (
                     P,
@@ -271,6 +283,27 @@ def eval_wae(
                 example_predictions[fold] = {
                     k: v.cpu().detach().numpy() for (k, v) in preds.items()
                 }
+
+        frechet_dist_decoded = 0
+        frechet_dist_sampled = 0
+        if fid_model is not None:
+
+            frechet_dist_decoded = fid.frechet_distance(
+                batches_to_dl(batches, "X", device),
+                batches_to_dl(batches, "dec_out", device),
+                fid_model,
+            ).item()
+
+            frechet_dist_sampled = fid.frechet_distance(
+                batches_to_dl(batches, "X", device),
+                batches_to_dl(batches, "dec_fake_out", device),
+                fid_model,
+            ).item()
+
+        for m in metrics:
+            m["fid_decoding"] = frechet_dist_decoded
+            m["fid_sampling"] = frechet_dist_sampled
+
         fold_metrics[fold] = metrics
 
     return dict(
@@ -280,7 +313,7 @@ def eval_wae(
                 fold: np.mean([m[m_name] for m in f_metrics])
                 for fold, f_metrics in fold_metrics.items()
             }
-            for m_name in metric_fns.keys()
+            for m_name in list(metric_fns.keys()) + ["fid_decoding", "fid_sampling"]
         },
         sample_results=example_predictions,
     )
@@ -321,8 +354,9 @@ def discriminator_fool_loss(l_fn: BCELoss) -> WAEMetricFn:
 
 def wae_reconstruction_loss(l_fn: BCELoss) -> WAEMetricFn:
     def fn(X, J, enc_out, dec_out, enc_fake, dec_fake_out, d_true_out, d_fake_out):
-        dec_out = dec_out * (J != mc.UNKNOWN_NO_LOSS)
-        X = X * (J != mc.UNKNOWN_NO_LOSS)
+        dec_out = dec_out * (J == mc.KNOWN)
+        X = X * (J == mc.KNOWN)
+
         batch_size = X.shape[0]
         recon_loss = l_fn(dec_out.reshape(batch_size, -1), X.reshape(batch_size, -1))
         return recon_loss
@@ -361,3 +395,48 @@ def ssim(
             for (igt, iout) in zip(images_gt, images_out)
         ]
     ).mean()
+
+
+def wae_iterator_for_fid(
+    data_loader: DataLoader, wae: InpaintingWAE, return_mode: str, device: torch.device
+):
+    for (X, J), y in data_loader:
+        X, J = [t.to(device) for t in [X, J]]
+
+        (enc_out, dec_out), (enc_fake, dec_fake_out), (d_true_out, d_fake_out), _ = wae(
+            X, J
+        )
+
+        if return_mode == "decoding":
+            yield dec_out
+
+        elif return_mode == "sampling":
+            yield dec_fake_out
+
+        else:
+            raise TypeError(return_mode)
+
+
+def evaluate_fid(
+    data_loader: DataLoader,
+    wae: InpaintingWAE,
+    return_mode: str,
+    fid_model: nn.Module,
+    device: torch.device,
+) -> float:
+    wae_iter = wae_iterator_for_fid(data_loader, wae, return_mode, device)
+
+    def data_iter():
+        for (X, J), y in data_loader:
+            yield X, y
+
+    return fid.frechet_distance(
+        data_iter(),
+        wae_iter,
+        fid_model,
+    ).item()
+
+
+def batches_to_dl(batches, ret_key: str, device: torch.device):
+    for b in batches:
+        yield torch.tensor(b[ret_key]).to(device)

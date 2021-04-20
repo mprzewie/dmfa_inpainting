@@ -6,11 +6,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.optim import Optimizer
+from torch.optim import Optimizer, Adam
 from torch.utils.data.dataloader import DataLoader
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
 from torchvision.datasets import MNIST
+from tqdm import tqdm
+from sklearn.metrics import accuracy_score
+import numpy as np
 
 
 class MNISTNet(nn.Module):
@@ -37,8 +40,39 @@ class MNISTNet(nn.Module):
         pred = self.fc2(x)
         return x, pred
 
+    @classmethod
+    def pretrained(cls, dl_train: DataLoader, dl_val: DataLoader, device: torch.device):
+        classifier = cls().to(device)
+        opt = Adam(classifier.parameters(), 4e-3)
+        loss_fn = torch.nn.CrossEntropyLoss()
 
+        for i in range(5):
+            classifier.train()
+            train_accs = []
+            val_accs = []
 
+            for ((X, J), y) in dl_train:
+                opt.zero_grad()
+                X, y = [t.to(device) for t in [X, y]]
+                y_pred, _ = classifier(X)
+                loss = loss_fn(y_pred, y)
+                loss.backward()
+                opt.step()
+                logits = y_pred.argmax(1)
+                train_accs.append(accuracy_score(y.cpu().numpy(), logits.cpu().numpy()))
+
+            classifier.eval()
+
+            for ((X, J), y) in dl_val:
+                X, y = [t.to(device) for t in [X, y]]
+                y_pred, _ = classifier(X)
+                logits = y_pred.argmax(1)
+                val_accs.append(accuracy_score(y.cpu().numpy(), logits.cpu().numpy()))
+            print(
+                "Pretraining MNIST FID model", i, np.mean(train_accs), np.mean(val_accs)
+            )
+
+        return classifier
 
 
 class InceptionV3(nn.Module):
@@ -50,17 +84,19 @@ class InceptionV3(nn.Module):
 
     # Maps feature dimensionality to their output blocks indices
     BLOCK_INDEX_BY_DIM = {
-        64: 0,   # First max pooling features
+        64: 0,  # First max pooling features
         192: 1,  # Second max pooling featurs
         768: 2,  # Pre-aux classifier features
-        2048: 3  # Final average pooling features
+        2048: 3,  # Final average pooling features
     }
 
-    def __init__(self,
-                 output_blocks=[DEFAULT_BLOCK_INDEX],
-                 resize_input=299,   # -1: not resize
-                 normalize_input=True,
-                 requires_grad=False):
+    def __init__(
+        self,
+        output_blocks=[DEFAULT_BLOCK_INDEX],
+        resize_input=299,  # -1: not resize
+        normalize_input=True,
+        requires_grad=False,
+    ):
         """Build pretrained InceptionV3
         Parameters
         ----------
@@ -89,8 +125,7 @@ class InceptionV3(nn.Module):
         self.output_blocks = sorted(output_blocks)
         self.last_needed_block = max(output_blocks)
 
-        assert self.last_needed_block <= 3, \
-            'Last possible output block index is 3'
+        assert self.last_needed_block <= 3, "Last possible output block index is 3"
 
         self.blocks = nn.ModuleList()
 
@@ -101,7 +136,7 @@ class InceptionV3(nn.Module):
             inception.Conv2d_1a_3x3,
             inception.Conv2d_2a_3x3,
             inception.Conv2d_2b_3x3,
-            nn.MaxPool2d(kernel_size=3, stride=2)
+            nn.MaxPool2d(kernel_size=3, stride=2),
         ]
         self.blocks.append(nn.Sequential(*block0))
 
@@ -110,7 +145,7 @@ class InceptionV3(nn.Module):
             block1 = [
                 inception.Conv2d_3b_1x1,
                 inception.Conv2d_4a_3x3,
-                nn.MaxPool2d(kernel_size=3, stride=2)
+                nn.MaxPool2d(kernel_size=3, stride=2),
             ]
             self.blocks.append(nn.Sequential(*block1))
 
@@ -134,7 +169,7 @@ class InceptionV3(nn.Module):
                 inception.Mixed_7a,
                 inception.Mixed_7b,
                 inception.Mixed_7c,
-                nn.AdaptiveAvgPool2d(output_size=(1, 1))
+                nn.AdaptiveAvgPool2d(output_size=(1, 1)),
             ]
             self.blocks.append(nn.Sequential(*block3))
 
@@ -158,8 +193,12 @@ class InceptionV3(nn.Module):
 
         if self.resize_input > 0:
             # size = 299
-            x = F.interpolate(x, size=(self.resize_input, self.resize_input),
-                              mode='bilinear', align_corners=True)
+            x = F.interpolate(
+                x,
+                size=(self.resize_input, self.resize_input),
+                mode="bilinear",
+                align_corners=True,
+            )
 
         if self.normalize_input:
             x = x.clone()

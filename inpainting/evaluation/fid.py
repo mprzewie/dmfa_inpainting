@@ -6,7 +6,7 @@ import numpy as np
 from scipy import linalg
 import time
 import sys
-
+from tqdm import tqdm
 
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
@@ -15,7 +15,7 @@ FEATURE_DIM = 2048
 RESIZE = 299
 
 
-def get_activations(image_iterator, images, model, feature_dim, verbose=True):
+def get_activations(image_iterator, model, feature_dim=None, images=None, verbose=True):
     """Calculates the activations of the pool_3 layer for all images.
     Params:
     -- image_iterator
@@ -35,13 +35,15 @@ def get_activations(image_iterator, images, model, feature_dim, verbose=True):
     if not sys.stdout.isatty():
         verbose = False
 
-    pred_arr = np.empty((images, feature_dim))
+    pred_arr = []
     end = 0
     t0 = time.time()
 
-    for batch in image_iterator:
+    for batch in tqdm(image_iterator, "getting activations"):
         if not isinstance(batch, torch.Tensor):
             batch = batch[0]
+
+        assert isinstance(batch, torch.Tensor)
         start = end
         batch_size = batch.shape[0]
         end = start + batch_size
@@ -50,7 +52,7 @@ def get_activations(image_iterator, images, model, feature_dim, verbose=True):
             batch = batch.to(device)
             pred = model(batch)[0]
             batch_feature = pred.cpu().numpy().reshape(batch_size, -1)
-            pred_arr[start:end] = batch_feature
+            pred_arr.extend(batch_feature)
 
         if verbose:
             print(
@@ -59,12 +61,12 @@ def get_activations(image_iterator, images, model, feature_dim, verbose=True):
                 flush=True,
             )
 
-    assert end == images
+    # assert end == images
 
     if verbose:
         print(" done")
 
-    return pred_arr
+    return np.array(pred_arr)
 
 
 def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
@@ -125,7 +127,7 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
 
 
 def calculate_activation_statistics(
-    image_iterator, images, model, feature_dim=FEATURE_DIM, verbose=False
+    image_iterator, model, images, feature_dim=FEATURE_DIM, verbose=False
 ):
     """Calculation of the statistics used by the FID.
     Params:
@@ -142,7 +144,7 @@ def calculate_activation_statistics(
     -- sigma : The covariance matrix of the activations of the pool_3 layer of
                the inception model.
     """
-    act = get_activations(image_iterator, images, model, feature_dim, verbose)
+    act = get_activations(image_iterator, model, feature_dim, images, verbose)
     mu = np.mean(act, axis=0)
     sigma = np.cov(act, rowvar=False)
     return mu, sigma
@@ -224,3 +226,21 @@ class BaseImputationSampler:
 
     def impute(self, data, mask):
         raise NotImplementedError
+
+
+def frechet_distance(
+    images_loader_1,
+    images_loader_2,
+    model: torch.nn.Module,
+    feature_dim: int = None,
+):
+    (mu_1, s_1), (mu_2, s_2) = [
+        calculate_activation_statistics(
+            il,
+            model,
+            feature_dim=feature_dim,
+            images=-1,
+        )
+        for il in [images_loader_1, images_loader_2]
+    ]
+    return calculate_frechet_distance(mu_1, s_1, mu_2, s_2)
