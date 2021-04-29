@@ -11,6 +11,7 @@ from inpainting.inpainters.linear_heads import LinearHeadsInpainter
 
 from inpainting.datasets.mask_coding import UNKNOWN_LOSS, UNKNOWN_NO_LOSS
 from inpainting.datasets.utils import RandomRectangleMaskConfig
+from inpainting.custom_layers import ConVar, ConVarNaive, PartialConvWrapper
 
 
 def dmfa_from_args(args) -> Union[FullyConvolutionalInpainter, LinearHeadsInpainter]:
@@ -91,3 +92,35 @@ def mask_configs_from_args(args):
             )
         )
     return mask_configs_train, mask_configs_val
+
+
+def convar_from_args(args):
+    convar_in_channels = 1 if "mnist" in args.dataset else 3
+
+    conv = nn.Conv2d(
+        convar_in_channels * 2 if args.convar_append_mask else convar_in_channels,
+        args.convar_channels,
+        kernel_size=3,
+        padding=1,
+    )
+    convar = (
+        ConVar(conv, args.convar_append_mask)
+        if args.convar_type == "full"
+        else ConVarNaive(conv, args.convar_append_mask)
+    )
+
+    if args.convar_type == "partial":
+        sys.path.append("../../partialconv/models")
+        from partialconv2d import PartialConv2d
+
+        convar = PartialConvWrapper(
+            PartialConv2d(
+                convar_in_channels,
+                args.convar_channels,
+                kernel_size=3,
+                padding=1,
+                multi_channel=True,
+            )
+        )
+
+    return convar

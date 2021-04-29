@@ -292,12 +292,16 @@ def eval_wae(
                 batches_to_dl(batches, "X", device),
                 batches_to_dl(batches, "dec_out", device),
                 fid_model,
+                il1_key=fold,
+                il2_key=f"{epoch}_{fold}_decoding",
             ).item()
 
             frechet_dist_sampled = fid.frechet_distance(
                 batches_to_dl(batches, "X", device),
                 batches_to_dl(batches, "dec_fake_out", device),
                 fid_model,
+                il1_key=fold,
+                il2_key=f"{epoch}_{fold}_sampling",
             ).item()
 
         for m in metrics:

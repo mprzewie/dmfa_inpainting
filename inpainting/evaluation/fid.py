@@ -126,8 +126,16 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     return diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean
 
 
+activations_cache = dict()
+
+
 def calculate_activation_statistics(
-    image_iterator, model, images, feature_dim=FEATURE_DIM, verbose=False
+    image_iterator,
+    model,
+    images,
+    feature_dim=FEATURE_DIM,
+    verbose=False,
+    img_iterator_key=None,
 ):
     """Calculation of the statistics used by the FID.
     Params:
@@ -144,10 +152,13 @@ def calculate_activation_statistics(
     -- sigma : The covariance matrix of the activations of the pool_3 layer of
                the inception model.
     """
-    act = get_activations(image_iterator, model, feature_dim, images, verbose)
-    mu = np.mean(act, axis=0)
-    sigma = np.cov(act, rowvar=False)
-    return mu, sigma
+    if img_iterator_key not in activations_cache or img_iterator_key is None:
+        act = get_activations(image_iterator, model, feature_dim, images, verbose)
+        mu = np.mean(act, axis=0)
+        sigma = np.cov(act, rowvar=False)
+        activations_cache[img_iterator_key] = mu, sigma
+
+    return activations_cache[img_iterator_key]
 
 
 class FID:
@@ -233,6 +244,8 @@ def frechet_distance(
     images_loader_2,
     model: torch.nn.Module,
     feature_dim: int = None,
+    il1_key: str = None,
+    il2_key: str = None,
 ):
     (mu_1, s_1), (mu_2, s_2) = [
         calculate_activation_statistics(
@@ -240,7 +253,8 @@ def frechet_distance(
             model,
             feature_dim=feature_dim,
             images=-1,
+            img_iterator_key=ilk,
         )
-        for il in [images_loader_1, images_loader_2]
+        for (il, ilk) in [(images_loader_1, il1_key), (images_loader_2, il2_key)]
     ]
     return calculate_frechet_distance(mu_1, s_1, mu_2, s_2)

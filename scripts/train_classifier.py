@@ -49,7 +49,7 @@ experiment_args.add_argument(
     "--convar_type",
     type=str,
     default="full",
-    choices=["full", "naive"],
+    choices=["full", "naive", "partial"],
     help="ConVar implementation to use.",
 )
 
@@ -209,17 +209,7 @@ dl_train_val = DataLoader(
 dl_val = DataLoader(ds_val, args.batch_size, shuffle=False, drop_last=True)
 
 
-convar_in_channels = 1 if "mnist" in args.dataset else 3
-
-if args.convar_append_mask:
-    convar_in_channels = convar_in_channels * 2
-
-conv = nn.Conv2d(convar_in_channels, args.convar_channels, kernel_size=3, padding=1)
-convar = (
-    ConVar(conv, args.convar_append_mask)
-    if args.convar_type == "full"
-    else ConVarNaive(conv, args.convar_append_mask)
-)
+convar = common_loaders.convar_from_args(args)
 
 img_shape = args.img_size
 

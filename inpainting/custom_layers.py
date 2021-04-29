@@ -145,3 +145,14 @@ class ConVarNaive(nn.Module):
         res = nn.functional.relu(self.conv(X_inp))
 
         return res
+
+
+class PartialConvWrapper(nn.Module):
+    def __init__(self, partial_conv: "PartialConv2d"):
+        super().__init__()
+        self.parconv = partial_conv
+
+    def forward(self, X, J, P, M, A, D):
+        # X = (X * (J == mc.KNOWN)) + (M.mean(dim=1) * (J != mc.KNOWN))
+
+        return self.parconv(X, J)
