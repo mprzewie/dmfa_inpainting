@@ -200,8 +200,6 @@ with (experiment_path / "rerun.sh").open("w") as f:
     print("python", *sys.argv, file=f)
 
 img_size = args.img_size
-mask_hidden_h = args.mask_hidden_h
-mask_hidden_w = args.mask_hidden_w
 
 mask_configs_train, mask_configs_val = common_loaders.mask_configs_from_args(args)
 

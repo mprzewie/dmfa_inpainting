@@ -62,16 +62,16 @@ data_args.add_argument(
 )
 # TODO simplify to one argument mask_hidden_size
 data_args.add_argument(
-    "--mask_hidden_h",
+    "--mask_train_size",
     type=int,
     default=14,
-    help="Height of hidden data masks which will be sampled on top of images.",
+    help="Size of hidden data masks which will be sampled on top of images in training",
 )
 data_args.add_argument(
-    "--mask_hidden_w",
+    "--mask_val_size",
     type=int,
     default=14,
-    help="Width of hidden data masks which will be sampled on top of images.",
+    help="Size of hidden data masks which will be sampled on top of images in validation",
 )
 data_args.add_argument(
     "--mask_unknown_size",

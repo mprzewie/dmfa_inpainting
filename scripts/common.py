@@ -72,13 +72,16 @@ def acflow_from_path(path: Union[Path, str], batch_size: Optional[int] = None):
 def mask_configs_from_args(args):
     mask_configs_train = [
         RandomRectangleMaskConfig(
-            UNKNOWN_LOSS, args.mask_hidden_h, args.mask_hidden_w, deterministic=False
+            UNKNOWN_LOSS,
+            args.mask_train_size,
+            args.mask_train_size,
+            deterministic=False,
         )
     ]
 
     mask_configs_val = [
         RandomRectangleMaskConfig(
-            UNKNOWN_LOSS, args.mask_hidden_h, args.mask_hidden_w, deterministic=True
+            UNKNOWN_LOSS, args.mask_val_size, args.mask_val_size, deterministic=True
         )
     ]
 
