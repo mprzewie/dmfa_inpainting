@@ -1,0 +1,2 @@
+# 2021-04-13 22:15:35.157375
+python train_wae.py --experiment_name=ae_v2_old_recon/inp_dmfa_fc_comp --inpainter_type=dmfa --inpainter_path ../results/inpainting/svhn/fullconv/complete_data/dmfa_mse_10_eps/ --batch_size 64 --dataset svhn --img_size 32 --mask_hidden_h 16 --mask_hidden_w 16 --num_epochs=10 --render_every 2 --dataset_root /mnt/users/mprzewiezlikowski/local/data/.data/ --lr 4e-3 --wae_recon_loss mse --max_benchmark_batches=200 --wae_latent_size 20 --wae_disc_loss_weight 0 --skip_fid

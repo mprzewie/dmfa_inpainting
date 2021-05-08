@@ -1,0 +1,2 @@
+# 2021-03-10 18:55:55.818951
+python train_classifier.py --experiment_name=exp_more_visualizations/dmfa_lh_pretrained_inpainter_frozen --inpainter_type=dmfa --inpainter_path ../results/inpainting/svhn/linear_heads/tryout_v0/ --dataset svhn --img_size 32 --mask_hidden_h 16 --mask_hidden_w 16 --num_epochs=10 --lr=1e-3 --dump_sample_results --render_every 3 --dataset_root /mnt/remote/wmii_gmum_projects/datasets/vision/SVHN/

@@ -1,0 +1,145 @@
+[
+  {
+    "epoch": 0,
+    "metrics": {
+      "cross_entropy": {
+        "train": 2.3026248811721803,
+        "val": 2.302823578262329
+      },
+      "accuracy": {
+        "train": 0.10593333333333334,
+        "val": 0.1013
+      }
+    }
+  },
+  {
+    "epoch": 1,
+    "metrics": {
+      "cross_entropy": {
+        "train": 0.2957578329186887,
+        "val": 0.28837042785286904
+      },
+      "accuracy": {
+        "train": 0.8988,
+        "val": 0.9002
+      }
+    }
+  },
+  {
+    "epoch": 2,
+    "metrics": {
+      "cross_entropy": {
+        "train": 0.24787686758711935,
+        "val": 0.2548570325110108
+      },
+      "accuracy": {
+        "train": 0.9142333333333333,
+        "val": 0.9093
+      }
+    }
+  },
+  {
+    "epoch": 3,
+    "metrics": {
+      "cross_entropy": {
+        "train": 0.22657968261074274,
+        "val": 0.2312838570829481
+      },
+      "accuracy": {
+        "train": 0.92045,
+        "val": 0.9173
+      }
+    }
+  },
+  {
+    "epoch": 4,
+    "metrics": {
+      "cross_entropy": {
+        "train": 0.21283688398636877,
+        "val": 0.2346862342286855
+      },
+      "accuracy": {
+        "train": 0.9258833333333333,
+        "val": 0.9184
+      }
+    }
+  },
+  {
+    "epoch": 5,
+    "metrics": {
+      "cross_entropy": {
+        "train": 0.20170761892649655,
+        "val": 0.22419142847508192
+      },
+      "accuracy": {
+        "train": 0.9293,
+        "val": 0.9232
+      }
+    }
+  },
+  {
+    "epoch": 6,
+    "metrics": {
+      "cross_entropy": {
+        "train": 0.19662401609815036,
+        "val": 0.2105939445309341
+      },
+      "accuracy": {
+        "train": 0.9308,
+        "val": 0.9246
+      }
+    }
+  },
+  {
+    "epoch": 7,
+    "metrics": {
+      "cross_entropy": {
+        "train": 0.1864937940457836,
+        "val": 0.2059711494547315
+      },
+      "accuracy": {
+        "train": 0.9340333333333334,
+        "val": 0.9295
+      }
+    }
+  },
+  {
+    "epoch": 8,
+    "metrics": {
+      "cross_entropy": {
+        "train": 0.17269736988634493,
+        "val": 0.2000552337007597
+      },
+      "accuracy": {
+        "train": 0.9383166666666667,
+        "val": 0.927
+      }
+    }
+  },
+  {
+    "epoch": 9,
+    "metrics": {
+      "cross_entropy": {
+        "train": 0.16850150172424813,
+        "val": 0.20476587416213005
+      },
+      "accuracy": {
+        "train": 0.9405333333333333,
+        "val": 0.9336
+      }
+    }
+  },
+  {
+    "epoch": 10,
+    "metrics": {
+      "cross_entropy": {
+        "train": 0.16460327421374,
+        "val": 0.19813631111064461
+      },
+      "accuracy": {
+        "train": 0.94125,
+        "val": 0.9326
+      }
+    }
+  }
+]

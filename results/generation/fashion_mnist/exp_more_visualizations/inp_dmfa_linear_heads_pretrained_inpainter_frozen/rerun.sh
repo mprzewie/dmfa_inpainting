@@ -1,0 +1,1 @@
+python train_wae.py --experiment_name=exp_more_visualizations/inp_dmfa_linear_heads_pretrained_inpainter_frozen --inpainter_type=dmfa --inpainter_path ../results/inpainting/fashion_mnist/long_trainings/linear_heads_v1 --dataset fashion_mnist --num_epochs=10 --render_every 2

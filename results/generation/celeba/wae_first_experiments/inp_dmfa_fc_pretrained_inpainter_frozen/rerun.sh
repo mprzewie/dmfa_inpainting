@@ -1,0 +1,1 @@
+python train_wae.py --experiment_name=wae_first_experiments/inp_dmfa_fc_pretrained_inpainter_frozen --inpainter_type=dmfa --inpainter_path ../results/inpainting/celeba/fullconv/32x32/ampl_0.2_nll_1_mse_1_for_10_epochs_and_then_0 --batch_size 64 --dataset celeba --img_size 32 --mask_hidden_h 16 --mask_hidden_w 16 --num_epochs=10 --render_every 2

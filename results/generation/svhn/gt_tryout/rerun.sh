@@ -1,0 +1,1 @@
+python train_wae.py --experiment_name gt_tryout --num_epochs 10 --batch_size 64 --dataset svhn --img_size 32 --mask_hidden_h 16 --mask_hidden_w 16 --batch_size 48 --num_epochs 2 --dataset_root /mnt/remote/wmii_gmum_projects/datasets/vision/SVHN/

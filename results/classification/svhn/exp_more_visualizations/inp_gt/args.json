@@ -14,6 +14,7 @@
   "device": "cuda:0",
   "dataset_root": "/mnt/remote/wmii_gmum_projects/datasets/vision/SVHN",
   "convar_type": "naive",
+  "convar_append_mask": true,
   "seed": false,
   "train_inpainter_layer": false,
   "results_dir": "../results/classification",

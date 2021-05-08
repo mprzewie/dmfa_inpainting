@@ -1,0 +1,2 @@
+# 2021-04-23 08:39:22.093689
+python train_wae.py --experiment_name=64x64/experiments_v3/inp_zero --convar_type=naive --inpainter_type=zero --batch_size 54 --dataset celeba --img_size 64 --mask_hidden_h 32 --mask_hidden_w 32 --num_epochs=10 --render_every 2 --lr=4e-4 --wae_fc=16 --wae_lc=16 --wae_depth=3 --wae_bl=2 --wae_latent_size=128 --dataset_root /mnt/users/mprzewiezlikowski/local/data/.data/ --max_benchmark_batches=-1

@@ -1,0 +1,1 @@
+python train_wae.py --experiment_name=new_metrics/wae_32_32/inp_mfa_pretrained_inpainter_frozen --inpainter_type=mfa --inpainter_path .../../gmm_missing/models/mnist_28_28 --dataset mnist --num_epochs=10 --render_every 2

@@ -1,0 +1,2 @@
+# 2021-05-07 14:18:38.674819
+python train_wae.py --experiment_name=wae_v10_long_training/inp_zero --convar_type=naive --inpainter_type=zero --batch_size 64 --dataset svhn --img_size 32 --mask_train_size 16 --mask_val_size 16 --num_epochs=50 --render_every 5 --dataset_root /mnt/users/mprzewiezlikowski/local/data/.data/ --lr 4e-4 --wae_recon_loss mse --wae_bl 2 --wae_depth 2 --max_benchmark_batches -1 --wae_latent_size 20 --wae_fc 96 --wae_lc 96 --wae_disc_loss_weight 0.01

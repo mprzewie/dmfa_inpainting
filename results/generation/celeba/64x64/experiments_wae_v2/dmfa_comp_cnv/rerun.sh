@@ -1,0 +1,2 @@
+# 2021-04-22 14:29:50.626910
+python train_wae.py --experiment_name=64x64/experiments_v2/dmfa_comp_cnv --inpainter_type=dmfa --inpainter_path ../results/inpainting/celeba/fullconv/64x64/dmfa_mse_10_eps_v4 --batch_size 54 --dataset celeba --img_size 64 --mask_hidden_h 32 --mask_hidden_w 32 --num_epochs=10 --render_every 2 --lr=4e-4 --wae_fc=16 --wae_lc=16 --wae_depth=3 --wae_bl=2 --dataset_root /mnt/users/mprzewiezlikowski/local/data/.data/ --max_benchmark_batches=-1 --convar_type naive

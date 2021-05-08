@@ -1,0 +1,1 @@
+python train_wae.py --experiment_name=wae_first_experiments/inp_mfa_pretrained_inpainter_trained --inpainter_type=mfa --inpainter_path ../../gmm_missing/models/fashion_mnist_28_28/ --dataset fashion_mnist --num_epochs=10 --render_every 2 --train_inpainter_layer

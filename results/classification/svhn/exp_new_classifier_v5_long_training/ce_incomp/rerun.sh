@@ -1,0 +1,2 @@
+# 2021-05-07 16:20:16.028434
+python train_classifier.py --experiment_name=exp_new_classifier_v5_long_training/ce_incomp --inpainter_type=dmfa --inpainter_path ../results/inpainting/svhn/fullconv/incomplete_data/context_encoder_v1/ --dataset svhn --img_size 32 --mask_train_size 16 --mask_val_size 16 --num_epochs=50 --lr=1e-3 --dump_sample_results --render_every 3 --dataset_root /mnt/remote/wmii_gmum_projects/datasets/vision/SVHN/ --max_benchmark_batches=-1 --convar_type naive

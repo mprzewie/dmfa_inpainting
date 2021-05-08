@@ -1,0 +1,2 @@
+# 2021-04-13 23:52:27.238432
+python train_wae.py --experiment_name=ae_v2_old_recon/inp_gt --convar_type=naive --inpainter_type=gt --batch_size 64 --dataset svhn --img_size 32 --mask_hidden_h 16 --mask_hidden_w 16 --num_epochs=10 --render_every 2 --dataset_root /mnt/users/mprzewiezlikowski/local/data/.data/ --lr 4e-4 --wae_recon_loss mse --wae_bl 2 --max_benchmark_batches=200 --wae_latent_size 20 --skip_fid --wae_disc_loss_weight 0
