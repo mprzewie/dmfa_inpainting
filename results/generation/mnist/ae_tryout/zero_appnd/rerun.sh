@@ -1,0 +1,2 @@
+# 2021-05-08 23:08:40.590771
+python train_wae.py --experiment_name=ae_tryout/zero_appnd --convar_type=naive --inpainter_type=zero --dataset mnist --num_epochs=10 --render_every 2 --wae_fc 8 --wae_lc 80 --dataset_root /home/mprzewiezlikowski/uj/.data --max_benchmark_batches=-1 --lr=2e-4 --wae_recon_loss mse --wae_bl 1 --wae_disc_loss_weight 0 --skip_fid --convar_append_mask --dataset_root /home/wise-models-zoo-configs/projects/experiments/mprzewie/personal/projects/experiments/mprzewie/data/ --batch_size=256
