@@ -1,0 +1,2 @@
+# 2021-05-09 00:31:20.188689
+python train_classifier.py --experiment_name=exp_new_classifier_val_size_8/inp_knn_5k --convar_type=naive --inpainter_type=knn --dataset svhn --img_size 32 --mask_train_size 16 --mask_val_size 8 --num_epochs=10 --lr=1e-3 --dump_sample_results --render_every 3 --max_benchmark_batches=-1 --dataset_root /home/wise-models-zoo-configs/projects/experiments/mprzewie/personal/projects/experiments/mprzewie/data/ --batch_size 256

@@ -1,0 +1,2 @@
+# 2021-05-09 00:35:46.044656
+python train_wae.py --experiment_name=ae_v3_long_training/inp_knn_5k --convar_type=naive --inpainter_type=knn --batch_size 64 --dataset svhn --img_size 32 --mask_train_size 16 --mask_val_size 16 --num_epochs=50 --render_every 2 --lr 2e-4 --wae_disc_loss_weight 0 --skip_fid --wae_recon_loss mse --wae_bl 2 --wae_depth 2 --max_benchmark_batches -1 --wae_latent_size 60 --wae_fc 32 --wae_lc 96 --dataset_root /home/wise-models-zoo-configs/projects/experiments/mprzewie/personal/projects/experiments/mprzewie/data/ --batch_size 256
