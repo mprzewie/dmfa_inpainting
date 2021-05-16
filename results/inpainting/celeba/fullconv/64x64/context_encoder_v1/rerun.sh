@@ -1,2 +1,4 @@
 # 2021-05-07 14:34:50.085319
 python train_inpainter.py --experiment_name fullconv/64x64/context_encoder_v1 --num_epochs 50 --l_nll_weight 0 --l_mse_weight 1 --lr=4e-5 --dataset celeba --img_size 64 --mask_train_size 32 --mask_val_size 32 --architecture fullconv --bkb_fc 32 --bkb_lc 32 --bkb_depth 3 --bkb_block_length 4 --num_factors 1 --a_amplitude 0.2 --batch_size=32 --dump_sample_results --render_every=3
+# 2021-05-11 10:44:32.841785
+python train_inpainter.py --experiment_name fullconv/64x64/context_encoder_v1 --num_epochs 50 --l_nll_weight 0 --l_mse_weight 1 --lr=4e-5 --dataset celeba --img_size 64 --mask_train_size 32 --mask_val_size 32 --architecture fullconv --bkb_fc 32 --bkb_lc 32 --bkb_depth 3 --bkb_block_length 4 --num_factors 1 --a_amplitude 0.2 --batch_size=32 --dump_sample_results --render_every=3

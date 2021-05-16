@@ -1,5 +1,5 @@
 {
-  "experiment_name": "exp_new_classifier_v5_long_training/mfa_frozen",
+  "experiment_name": "exp_new_classifier_v5_long_training//mfa_frozen",
   "max_benchmark_batches": -1,
   "render_every": 3,
   "dump_val_predictions": false,

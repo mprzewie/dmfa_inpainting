@@ -6,6 +6,11 @@ sys.path.append("..")
 
 from pprint import pprint
 
+try:
+    import cuml, cudf
+except:
+    print("Failed to import CUML. This is not breaking unless you want to use KNN.")
+
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST, FashionMNIST
 
