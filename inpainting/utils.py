@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from sklearn.neural_network import MLPClassifier
 from torch.utils.data.dataloader import DataLoader
+from torch.utils.data import Dataset, TensorDataset
 from tqdm import tqdm
 
 from inpainting.datasets.mask_coding import UNKNOWN_LOSS
@@ -61,6 +62,29 @@ def predictions_for_entire_loader(
 
             # print([t.shape for t in (x_, j_, p_, m_, a_, d_,)])
     return results
+
+
+def predictions_for_entire_loader_as_dataset(
+    inpainter: InpainterModule,
+    data_loader: DataLoader,
+    device: torch.device = torch.device("cpu"),
+) -> List[Tuple[np.ndarray, ...]]:
+    results = predictions_for_entire_loader(inpainter, data_loader, device)
+    X, J, P, M, A, D, Y = [], [], [], [], [], [], []
+
+    for (x, j, p, m, a, d, y) in results:
+        X.append(x)
+        J.append(j)
+        P.append(p)
+        M.append(m)
+        A.append(a)
+        D.append(d)
+        Y.append(y)
+
+    X, J, P, M, A, D, Y = [torch.tensor(np.array(t)) for t in [X, J, P, M, A, D, Y]]
+
+    ds = TensorDataset(X, J, P, M, A, D, Y)
+    return ds
 
 
 # control which parameters are frozen / free for optimization

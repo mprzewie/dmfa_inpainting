@@ -1,0 +1,4 @@
+# 2021-05-16 15:11:11.614353
+python train_inpainter.py --experiment_name fullconv/incomplete_data/dmfa_mse_10_eps_v4_train_det --dataset svhn --img_size 32 --mask_train_size 16 --mask_val_size 16 --batch_size 64 --architecture fullconv --bkb_fc 32 --bkb_lc 32 --bkb_depth 3 --bkb_block_length 2 --num_factors 4 --a_amplitude 0.2 --mask_unknown_size 16 --num_epochs 10 --l_nll_weight 1 --l_mse_weight 1 --lr 4e-4
+# 2021-05-16 17:19:31.171808
+python train_inpainter.py --experiment_name fullconv/incomplete_data/dmfa_mse_10_eps_v4_train_det --dataset svhn --img_size 32 --mask_train_size 16 --mask_val_size 16 --batch_size 64 --architecture fullconv --bkb_fc 32 --bkb_lc 32 --bkb_depth 3 --bkb_block_length 2 --num_factors 4 --a_amplitude 0.2 --mask_unknown_size 16 --num_epochs 90 --l_nll_weight 1 --l_mse_weight 0 --lr 1e-4

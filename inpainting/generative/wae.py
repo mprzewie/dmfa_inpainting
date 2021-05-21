@@ -421,26 +421,6 @@ def wae_iterator_for_fid(
             raise TypeError(return_mode)
 
 
-def evaluate_fid(
-    data_loader: DataLoader,
-    wae: InpaintingWAE,
-    return_mode: str,
-    fid_model: nn.Module,
-    device: torch.device,
-) -> float:
-    wae_iter = wae_iterator_for_fid(data_loader, wae, return_mode, device)
-
-    def data_iter():
-        for (X, J), y in data_loader:
-            yield X, y
-
-    return fid.frechet_distance(
-        data_iter(),
-        wae_iter,
-        fid_model,
-    ).item()
-
-
 def batches_to_dl(batches, ret_key: str, device: torch.device):
     for b in batches:
         yield torch.tensor(b[ret_key]).to(device)

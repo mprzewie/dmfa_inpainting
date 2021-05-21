@@ -66,6 +66,47 @@ class InpaintingClassifier(nn.Module):
         return classification_result, (inpainting_result, convar_out)
 
 
+class PreInpaintedClassifier(nn.Module):
+    def __init__(
+        self,
+        convar_layer: ConVar,
+        classifier: Optional[nn.Module] = None,
+    ):
+        super().__init__()
+        self.convar = convar_layer
+        self.classifier = classifier or get_classifier(
+            in_channels=convar_layer.conv.out_channels
+        )
+
+    def forward(self, X, J, P, M, A, D):
+        t0 = time()
+        b, c, h, w = X.shape
+        b, n, chw = M.shape
+        b, n, l, chw = A.shape
+
+        P_r = P
+        M_r = M.reshape(b, n, c, h, w)
+        A_r = A.reshape(b, n, l, c, h, w)
+        D_r = D.reshape(b, n, c, h, w)
+
+        t1 = time()
+
+        convar_out = self.convar(X, J, P_r, M_r, A_r, D_r)
+
+        t2 = time()
+        classification_result = self.classifier(convar_out)
+
+        inpainting_result = (P, M, A, D)
+        t3 = time()
+
+        prep = t1 - t0
+        convar = t2 - t1
+        clas = t3 - t2
+        times = [prep, convar, clas]
+
+        return classification_result, (inpainting_result, convar_out)
+
+
 def get_classifier(
     in_channels: int = 32,
     in_height: int = 28,
@@ -87,23 +128,9 @@ def get_classifier(
         block_length=block_len,
         first_channels=in_channels,
         latent_size=latent_size,
+        dropout=dropout,
     )
 
     return nn.Sequential(
         encoder, nn.Dropout(p=dropout), nn.ReLU(), nn.Linear(latent_size, n_classes)
     )
-
-    # conv_out_chan = in_channels * 2
-    # lin_in_shape = (in_height // 4) * (in_width // 4) * conv_out_chan
-
-    # return nn.Sequential(
-    #     nn.ReLU(),
-    #     nn.MaxPool2d(2),
-    #     nn.Conv2d(in_channels, conv_out_chan, 3, padding=1),
-    #     nn.ReLU(),
-    #     nn.MaxPool2d(2),
-    #     nn.Flatten(),
-    #     nn.Linear(lin_in_shape, conv_out_chan * 2),
-    #     nn.ReLU(),
-    #     nn.Linear(conv_out_chan * 2, n_classes),
-    # )

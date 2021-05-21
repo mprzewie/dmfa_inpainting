@@ -124,13 +124,18 @@ class UnetSkipConnectionBlock(nn.Module):
 
 
 def conv_relu_bn(
-    in_channels: int, out_channels: int, kernel_size: int = 3
+    in_channels: int, out_channels: int, kernel_size: int = 3, dropout: float = 0.0
 ) -> nn.Module:
-    return nn.Sequential(
+    modules = [
         nn.Conv2d(in_channels, out_channels, kernel_size, padding=kernel_size // 2),
         nn.ReLU(),
         nn.BatchNorm2d(out_channels),
-    )
+    ]
+
+    if dropout != 0:
+        modules.append(nn.Dropout(dropout))
+
+    return nn.Sequential(*modules)
 
 
 def down_up_backbone_v2(
@@ -141,6 +146,7 @@ def down_up_backbone_v2(
     last_channels: int = 1,
     kernel_size: int = 3,
     latent_size: int = -1,
+    dropout: float = 0.0,
 ) -> Tuple[nn.Module, ...]:
     c, h, w = chw
     down = [nn.Conv2d(c, first_channels, kernel_size=3, padding=1)]
@@ -157,6 +163,7 @@ def down_up_backbone_v2(
                     else first_channels * (2 ** i),
                     first_channels * (2 ** i),
                     kernel_size=kernel_size,
+                    dropout=dropout,
                 )
             ]
 
@@ -167,6 +174,7 @@ def down_up_backbone_v2(
                     if (j == 0 and i != 0)
                     else last_channels * (2 ** i),
                     kernel_size=kernel_size,
+                    dropout=dropout,
                 )
             ] + up_block
 

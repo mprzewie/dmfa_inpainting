@@ -7,12 +7,17 @@ from inpainting.datasets.utils import RandomRectangleMaskConfig
 
 
 def random_mask_fn(
-    mask_configs: Sequence[RandomRectangleMaskConfig]
+    mask_configs: Sequence[RandomRectangleMaskConfig],
 ) -> Callable[[torch.Tensor], Tuple[torch.Tensor, torch.Tensor]]:
     def tensor_to_tensor_with_random_mask(image_tensor: torch.Tensor):
         mask = np.ones((3, *image_tensor.shape[1:3]))
         for mc in mask_configs:
-            mask = mc.generate_on_mask(mask)
+            mask = mc.generate_on_mask(
+                mask,
+                seed=mc.value + int((image_tensor * 255).sum().item())
+                if mc.deterministic
+                else None,
+            )
         return image_tensor, torch.tensor(mask).float()
 
     return tensor_to_tensor_with_random_mask
