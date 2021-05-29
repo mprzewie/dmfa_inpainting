@@ -433,6 +433,6 @@ if args.dump_val_predictions:
     )
     with (
         experiment_path
-        / f"val_predictions_{args.mask_hidden_h}x{args.mask_hidden_w}.pkl"
+        / f"val_predictions_{args.mask_train_size}x{args.mask_train_size}.pkl"
     ).open("wb") as f:
         pickle.dump(val_results, f)
