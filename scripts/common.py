@@ -1,7 +1,7 @@
 """Script utilities"""
 import sys
 from pathlib import Path
-from typing import Union, Optional
+from typing import Union, Optional, Type, Tuple, List
 
 from torch import nn
 
@@ -10,7 +10,7 @@ from inpainting.inpainters.fullconv import FullyConvolutionalInpainter
 from inpainting.inpainters.linear_heads import LinearHeadsInpainter
 
 from inpainting.datasets.mask_coding import UNKNOWN_LOSS, UNKNOWN_NO_LOSS
-from inpainting.datasets.utils import RandomRectangleMaskConfig
+from inpainting.datasets.utils import RandomRectangleMaskConfig, RandomMaskConfig, RandomNoiseMaskConfig
 from inpainting.custom_layers import ConVar, ConVarNaive, PartialConvWrapper
 
 
@@ -69,28 +69,37 @@ def acflow_from_path(path: Union[Path, str], batch_size: Optional[int] = None):
     return ACFlowWrapper.from_path(path, batch_size=batch_size)
 
 
-def mask_configs_from_args(args):
+def mask_configs_from_args(args) -> Tuple[
+    List[RandomMaskConfig],
+    List[RandomMaskConfig]
+]:
+
+    if args.mask_shape == "square":
+        rmc_type = RandomRectangleMaskConfig
+    elif args.mask_shape == "noise":
+        rmc_type = RandomNoiseMaskConfig
+    else:
+        raise TypeError(args.mask_shape)
+
     mask_configs_train = [
-        RandomRectangleMaskConfig(
-            UNKNOWN_LOSS,
-            args.mask_train_size,
-            args.mask_train_size,
+        rmc_type(
+            value=UNKNOWN_LOSS,
+            size=args.mask_train_size,
             deterministic=False,
         )
     ]
 
     mask_configs_val = [
-        RandomRectangleMaskConfig(
-            UNKNOWN_LOSS, args.mask_val_size, args.mask_val_size, deterministic=True
+        rmc_type(
+            value=UNKNOWN_LOSS, size=args.mask_val_size, deterministic=True
         )
     ]
 
     if args.mask_unknown_size > 0:
         mask_configs_train.append(
-            RandomRectangleMaskConfig(
-                UNKNOWN_NO_LOSS,
-                args.mask_unknown_size,
-                args.mask_unknown_size,
+            rmc_type(
+                value=UNKNOWN_NO_LOSS,
+                size=args.mask_unknown_size,
                 deterministic=True,
             )
         )

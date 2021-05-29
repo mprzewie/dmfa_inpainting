@@ -1,21 +1,16 @@
 from pathlib import Path
 from typing import Tuple, Sequence, Type
 
-from torchvision.datasets import MNIST
 from torchvision import transforms as tr
-from inpainting.datasets.mask_coding import UNKNOWN_LOSS, UNKNOWN_NO_LOSS, KNOWN
-from inpainting.datasets.utils import RandomRectangleMaskConfig, random_mask_fn
+from torchvision.datasets import MNIST
 
-DEFAULT_MASK_CONFIGS = (
-    RandomRectangleMaskConfig(UNKNOWN_LOSS, 14, 14, 0, 0),
-    #     RandomRectangleMaskConfig(UNKNOWN_NO_LOSS, 8, 8, 2, 2),
-)
+from inpainting.datasets.utils import random_mask_fn, RandomMaskConfig
 
 
 def train_val_datasets(
     save_path: Path,
-    mask_configs_train: Sequence[RandomRectangleMaskConfig],
-    mask_configs_val: Sequence[RandomRectangleMaskConfig],
+    mask_configs_train: Sequence[RandomMaskConfig],
+    mask_configs_val: Sequence[RandomMaskConfig],
     ds_type: Type[MNIST] = MNIST,
     resize_size: Tuple[int, int] = (28, 28),
 ) -> Tuple[MNIST, MNIST]:
