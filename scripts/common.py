@@ -10,7 +10,12 @@ from inpainting.inpainters.fullconv import FullyConvolutionalInpainter
 from inpainting.inpainters.linear_heads import LinearHeadsInpainter
 
 from inpainting.datasets.mask_coding import UNKNOWN_LOSS, UNKNOWN_NO_LOSS
-from inpainting.datasets.utils import RandomRectangleMaskConfig, RandomMaskConfig, RandomNoiseMaskConfig
+from inpainting.datasets.utils import (
+    RandomRectangleMaskConfig,
+    RandomMaskConfig,
+    RandomNoiseMaskConfig,
+    RandomTrapezMaskConfig,
+)
 from inpainting.custom_layers import ConVar, ConVarNaive, PartialConvWrapper
 
 
@@ -69,17 +74,16 @@ def acflow_from_path(path: Union[Path, str], batch_size: Optional[int] = None):
     return ACFlowWrapper.from_path(path, batch_size=batch_size)
 
 
-def mask_configs_from_args(args) -> Tuple[
-    List[RandomMaskConfig],
-    List[RandomMaskConfig]
-]:
+def mask_configs_from_args(
+    args,
+) -> Tuple[List[RandomMaskConfig], List[RandomMaskConfig]]:
+    mask_classes = {
+        "square": RandomRectangleMaskConfig,
+        "noise": RandomNoiseMaskConfig,
+        "trapez": RandomTrapezMaskConfig,
+    }
 
-    if args.mask_shape == "square":
-        rmc_type = RandomRectangleMaskConfig
-    elif args.mask_shape == "noise":
-        rmc_type = RandomNoiseMaskConfig
-    else:
-        raise TypeError(args.mask_shape)
+    rmc_type = mask_classes[args.mask_shape]
 
     mask_configs_train = [
         rmc_type(
@@ -90,9 +94,7 @@ def mask_configs_from_args(args) -> Tuple[
     ]
 
     mask_configs_val = [
-        rmc_type(
-            value=UNKNOWN_LOSS, size=args.mask_val_size, deterministic=True
-        )
+        rmc_type(value=UNKNOWN_LOSS, size=args.mask_val_size, deterministic=True)
     ]
 
     if args.mask_unknown_size > 0:

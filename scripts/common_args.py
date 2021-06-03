@@ -84,8 +84,8 @@ data_args.add_argument(
     "--mask_shape",
     type=str,
     default="square",
-    choices=["square", "noise"],
-    help="Mask shape used in training and validation."
+    choices=["square", "noise", "trapez"],
+    help="Mask shape used in training and validation.",
 )
 
 
