@@ -22,6 +22,18 @@ To train the DMFA model, see the script:
 ```bash
 python scripts/train_inpainter.py --h
 ```
+
+## Weights
+
+We provide DMFA training results (among which are JSONs, weights and training arguments) [here](https://drive.google.com/drive/folders/1o_qgbJNfh8HLlQEq0CPmXXCvCwgeqcH4?usp=sharing).
+
+We provide results for following models, trained on complete and incomplete data:
+
+* MNIST - linear heads 
+* SVHN - fully convolutional 
+* CIFAR-10 - fully convolutional
+* CelebA - fully convolutional, trained on 64x64 images
+
 ### Classical MFA baseline
 
 The implementation of classical MFA baseline we compare ourselves to in the paper can be found [here](https://github.com/mareksmieja/gmm_missing).
