@@ -1,6 +1,8 @@
 # dmfa_inpainting
 
-Source code for [Estimating conditional density of missing values using deep Gaussian mixture model](https://arxiv.org/abs/2010.02183).
+Source code for:
+* [MisConv: Convolutional Neural Networks for Missing Data](https://arxiv.org/abs/2110.14010) (to be published at WACV 2022)
+* [Estimating conditional density of missing values using deep Gaussian mixture model](https://arxiv.org/abs/2010.02183) (ICONIP 2020)
 
 ## Requirements
 
@@ -21,9 +23,31 @@ To train the DMFA model, see the script:
 
 ```bash
 python scripts/train_inpainter.py --h
-```
+````
 
-## Weights
+To run classifier / WAE experiments, see the scripts:
+
+```bash
+python scripts/train_classifier_v2.py --h
+python scripts/train_wae_v2.py --h
+```
+respectively.
+
+Moreover, in the `scripts/` directory we provide the `*.sh` scripts which run the model trainings 
+with the same parameters as used in the paper.
+
+All experiments are runnable on a single Nvidia GPU.
+
+### Inpainters used with classifiers and WAE
+In order to run a classifier / WAE with DMFA, one must train the DMFA model first with the above script.
+
+For some of the inpainters we compare our approach to, additional repositories must be cloned or installed:
+* Partial Convolutions: https://github.com/NVIDIA/partialconv
+* ACFlow: https://github.com/lupalab/ACFlow
+* k-NN: either sklearn (runs very slowly) or [cuml](https://github.com/rapidsai/cuml) + [cudf](https://github.com/rapidsai/cudf)
+* classical MFA: https://github.com/mareksmieja/gmm_missing
+
+## DMFA Weights
 
 We provide DMFA training results (among which are JSONs, weights and training arguments) [here](https://drive.google.com/drive/folders/1o_qgbJNfh8HLlQEq0CPmXXCvCwgeqcH4?usp=sharing).
 
@@ -34,10 +58,6 @@ We provide results for following models, trained on complete and incomplete data
 * CIFAR-10 - fully convolutional
 * CelebA - fully convolutional, trained on 64x64 images
 
-### Classical MFA baseline
-
-The implementation of classical MFA baseline we compare ourselves to in the paper can be found [here](https://github.com/mareksmieja/gmm_missing).
-
 ### Notebooks
 
 There are several Jupyter Notebooks in the [notebooks](https://github.com/mprzewie/gmms_inpainting/tree/master/notebooks) directory. 
@@ -47,8 +67,18 @@ The notebooks are not guaranteed to run 100% correctly due to the subsequent cod
 
 ## Citation
 
-If you find our work useful, please cite us!
- 
+If you find our work useful, please consider citing us!
+
+```
+@misc{przewięźlikowski2021misconv,
+      title={MisConv: Convolutional Neural Networks for Missing Data}, 
+      author={Marcin Przewięźlikowski and Marek Śmieja and Łukasz Struski and Jacek Tabor},
+      year={2021},
+      eprint={2110.14010},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+```
 ```
 @article{Przewiezlikowski_2020,
    title={Estimating Conditional Density of Missing Values Using Deep Gaussian Mixture Model},
