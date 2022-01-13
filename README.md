@@ -1,7 +1,7 @@
 # dmfa_inpainting
 
 Source code for:
-* [MisConv: Convolutional Neural Networks for Missing Data](https://arxiv.org/abs/2110.14010) (to be published at WACV 2022)
+* [MisConv: Convolutional Neural Networks for Missing Data](https://arxiv.org/abs/2110.14010) (WACV 2022)
 * [Estimating conditional density of missing values using deep Gaussian mixture model](https://arxiv.org/abs/2010.02183) (ICONIP 2020)
 
 ## Requirements
@@ -70,13 +70,13 @@ The notebooks are not guaranteed to run 100% correctly due to the subsequent cod
 If you find our work useful, please consider citing us!
 
 ```
-@misc{przewięźlikowski2021misconv,
-      title={MisConv: Convolutional Neural Networks for Missing Data}, 
-      author={Marcin Przewięźlikowski and Marek Śmieja and Łukasz Struski and Jacek Tabor},
-      year={2021},
-      eprint={2110.14010},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG}
+@InProceedings{Przewiezlikowski_2022_WACV,
+    author    = {Przewi\k{e}\'zlikowski, Marcin and \'Smieja, Marek and Struski, {\L}ukasz and Tabor, Jacek},
+    title     = {MisConv: Convolutional Neural Networks for Missing Data},
+    booktitle = {Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision (WACV)},
+    month     = {January},
+    year      = {2022},
+    pages     = {2060-2069}
 }
 ```
 ```
