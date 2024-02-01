@@ -8,4 +8,4 @@ matplotlib
 dotted
 streamlit
 altair
-scikit-learn==0.24.0
+scikit-learn==1.0.1
